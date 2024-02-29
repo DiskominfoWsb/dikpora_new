@@ -87,6 +87,7 @@ $routes->get('/artikel/pencarian', 'Post::search'); //by keywords get method
 $routes->get('/artikel/arsip', 'Post::archive'); //all category
 $routes->get('/artikel/(:any)', 'Post::article/$1'); //by slug
 $routes->get('/artikel', 'Post::archive'); //all category
+$routes->get('/download', 'View::download'); //all category
 
 //page halaman, sitemap dsb
 $routes->get('/halaman/peta-situs', 'Page::sitemap');

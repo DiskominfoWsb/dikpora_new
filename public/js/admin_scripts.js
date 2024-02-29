@@ -1,4 +1,4 @@
-const dikporaBaseURL = 'https://dikpora.wonosobokab.go.id/';
+const dikporaBaseURL = 'http://localhost/dikpora/public/';
 CKEDITOR.plugins.addExternal('youtube', dikporaBaseURL+'js/ckeditor/plugins/youtube/plugin.js');
 CKEDITOR.plugins.addExternal('html5video', dikporaBaseURL+'js/ckeditor/plugins/html5video/plugin.js');
 CKEDITOR.plugins.addExternal('widget', dikporaBaseURL+'js/ckeditor/plugins/widget/plugin.js');

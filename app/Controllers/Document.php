@@ -2,6 +2,8 @@
 
 namespace App\Controllers;
 
+use Google\Cloud\Storage\StorageClient;
+
 class Document extends BaseController
 {
     protected $db;
@@ -14,7 +16,7 @@ class Document extends BaseController
         $this->db = \Config\Database::connect();
         helper([
             'date', 'my_date', 'text', 'security', 'page',
-            'option','menu','category','service', 'comment',
+            'option', 'menu', 'category', 'service', 'comment',
             'counter',
         ]);
 
@@ -22,8 +24,7 @@ class Document extends BaseController
 
         $list   = [];
         $listKu = json_decode(getOption('jenis_transparansi', $this->db), true);
-        if($listKu)
-        {
+        if ($listKu) {
             array_multisort(
                 array_column($listKu, 'title'),
                 SORT_ASC,
@@ -51,7 +52,7 @@ class Document extends BaseController
     public function index()
     {
         //always check authentication
-        if(!session()->ID) return redirect()->to('login');
+        if (!session()->ID) return redirect()->to('login');
 
         //retrieve data
         $category = $this->request->getGet('category');
@@ -77,7 +78,7 @@ class Document extends BaseController
     public function new()
     {
         //always check authentication
-        if(!session()->ID) return redirect()->to('login');
+        if (!session()->ID) return redirect()->to('login');
 
         //check status
         $status = $this->request->getGet('status');
@@ -99,9 +100,9 @@ class Document extends BaseController
         $builder->selectCount('ID');
         $builder->where('category', $category);
         $builder->where('status', $status);
-        if($subcategory) $builder->where('sub_category', $subcategory);
-        if($fiscal) $builder->where('fiscal', $fiscal);
-        if(trim($keywords)) $builder->like('title', $keywords);
+        if ($subcategory) $builder->where('sub_category', $subcategory);
+        if ($fiscal) $builder->where('fiscal', $fiscal);
+        if (trim($keywords)) $builder->like('title', $keywords);
         $result = $builder->get()->getRow();
 
         //pagination
@@ -112,17 +113,17 @@ class Document extends BaseController
         // Call makeLinks() to make pagination links.
         $pager_links = $pager->makeLinks($page, $perPage, $total);
         $this->data['pager']        = $pager_links;
-        $this->data['pagerStart']   = ($page-1)*$perPage;
+        $this->data['pagerStart']   = ($page - 1) * $perPage;
 
         //reset query with pagination
         $builder->resetQuery();
         $builder = $this->db->table('document');
         $builder->where('category', $category);
         $builder->where('status', $status);
-        if($subcategory) $builder->where('sub_category', $subcategory);
-        if($fiscal) $builder->where('fiscal', $fiscal);
-        if(trim($keywords)) $builder->like('title', $keywords);
-        if($page) $builder->limit($perPage, $this->data['pagerStart']);
+        if ($subcategory) $builder->where('sub_category', $subcategory);
+        if ($fiscal) $builder->where('fiscal', $fiscal);
+        if (trim($keywords)) $builder->like('title', $keywords);
+        if ($page) $builder->limit($perPage, $this->data['pagerStart']);
         $builder->orderBy('date_uploaded', 'DESC');
         $result = $builder->get()->getResult();
         $this->data['document'] = $result;
@@ -155,7 +156,7 @@ class Document extends BaseController
     public function addNew()
     {
         //always check authentication
-        if(!session()->ID) return redirect()->to('login');
+        if (!session()->ID) return redirect()->to('login');
 
         //get post form data
         $title          = $this->request->getPost('title');
@@ -163,23 +164,43 @@ class Document extends BaseController
         $category       = $this->request->getPost('category');
         $subcategory    = $this->request->getPost('sub-category');
         $fiscal         = $this->request->getPost('fiscal');
-        $date_uploaded  = $this->request->getPost('date').date(' H:i:s', now());
+        $date_uploaded  = $this->request->getPost('date') . date(' H:i:s', now());
         $status         = ($this->request->getPost('publish-now')) ? '1' : '0';
         $file           = $this->request->getFile('file');
         $linkExternal   = trim($this->request->getPost('link-external'));
         $url            = '#';
 
         //upload file first
-        if($file->isValid() && !$file->hasMoved())
-        {
+        if ($file->isValid() && !$file->hasMoved()) {
             $path   = ROOTPATH . 'public/upload/doc/';
             $name   = $file->getRandomName();
+
+            // Move the image to the specified path with the generated name
             $file->move($path, $name);
-            $url    = base_url('upload/doc/'.$name);
-        }
-        else
-        {
-            if($linkExternal) $url = $linkExternal;
+
+            // Initialize Google Cloud Storage client
+            $storage = new StorageClient([
+                'keyFilePath' => ROOTPATH . 'public/service-account-key.json',
+                'projectId' => 'diskominfo-wonosobo',
+            ]);
+
+            // Specify the bucket and file names in GCS
+            $bucketName = 'dikpora';
+            $objectName = 'upload/doc/' . $name;
+
+            // Upload the original image to GCS
+            $bucket = $storage->bucket($bucketName);
+            $bucket->upload(fopen($path . $name, 'r'), [
+                'name' => $objectName,
+            ]);
+
+            // Delete the local temporary files
+            unlink($path . $name);
+
+            // Set image URLs as the final result
+            $url    = $objectName;
+        } else {
+            if ($linkExternal) $url = $linkExternal;
         }
 
         $data = [
@@ -200,15 +221,12 @@ class Document extends BaseController
 
         //check if inserted
         $alert = [];
-        if($this->db->affectedRows() > 0)
-        {
+        if ($this->db->affectedRows() > 0) {
             $alert = [
                 'type'      => 'success',
                 'message'   => 'Berhasil menyimpan dokumen baru.'
             ];
-        }
-        else
-        {
+        } else {
             $alert = [
                 'type'      => 'danger',
                 'message'   => 'Gagal menyimpan dokumen baru!'
@@ -216,7 +234,7 @@ class Document extends BaseController
         }
 
         session()->setFlashdata('alert', $alert);
-        return redirect()->to('document/new?category='.$category);
+        return redirect()->to('document/new?category=' . $category);
     }
 
     public function editStatus()
@@ -230,15 +248,12 @@ class Document extends BaseController
         $builder->update();
 
         $stat = ($status === '0') ? 'menghapus' : 'merestore';
-        if($this->db->affectedRows() > 0)
-        {
+        if ($this->db->affectedRows() > 0) {
             session()->setFlashdata('alert', [
                 'type'      => 'success',
                 'message'   => "Berhasil {$stat} halaman yang dipilih.",
             ]);
-        }
-        else
-        {
+        } else {
             session()->setFlashdata('alert', [
                 'type'      => 'danger',
                 'message'   => "Gagal {$stat} halaman yang dipilih!",
@@ -259,9 +274,9 @@ class Document extends BaseController
         $builder->selectCount('ID');
         $builder->where('category', 'transparansi');
         $builder->where('status', '1');
-        if($subcategory) $builder->where('sub_category', $subcategory);
-        if($fiscal) $builder->where('fiscal', $fiscal);
-        if(trim($keywords)) $builder->like('title', $keywords);
+        if ($subcategory) $builder->where('sub_category', $subcategory);
+        if ($fiscal) $builder->where('fiscal', $fiscal);
+        if (trim($keywords)) $builder->like('title', $keywords);
         $result = $builder->get()->getRow();
 
         //pagination
@@ -272,17 +287,17 @@ class Document extends BaseController
         // Call makeLinks() to make pagination links.
         $pager_links = $pager->makeLinks($page, $perPage, $total);
         $this->data['pager']        = $pager_links;
-        $this->data['pagerStart']   = ($page-1)*$perPage;
+        $this->data['pagerStart']   = ($page - 1) * $perPage;
 
         //reset query with pagination
         $builder->resetQuery();
         $builder = $this->db->table('document');
         $builder->where('category', 'transparansi');
         $builder->where('status', '1');
-        if($subcategory) $builder->where('sub_category', $subcategory);
-        if($fiscal) $builder->where('fiscal', $fiscal);
-        if(trim($keywords)) $builder->like('title', $keywords);
-        if($page) $builder->limit($perPage, $this->data['pagerStart']);
+        if ($subcategory) $builder->where('sub_category', $subcategory);
+        if ($fiscal) $builder->where('fiscal', $fiscal);
+        if (trim($keywords)) $builder->like('title', $keywords);
+        if ($page) $builder->limit($perPage, $this->data['pagerStart']);
         $builder->orderBy('title', 'ASC');
         $result = $builder->get()->getResult();
         $this->data['document'] = $result;
@@ -356,8 +371,7 @@ class Document extends BaseController
         $builder->where('category', 'umum');
         $builder->where('sub_category', 'lainnya');
         $builder->where('status', '1');
-        if(trim($keywords))
-        {
+        if (trim($keywords)) {
             $keywords = trim($keywords);
             $builder->groupStart()
                 ->like('title', $keywords)
@@ -374,7 +388,7 @@ class Document extends BaseController
         // Call makeLinks() to make pagination links.
         $pager_links = $pager->makeLinks($page, $perPage, $total);
         $this->data['pager']        = $pager_links;
-        $this->data['pagerStart']   = ($page-1)*$perPage;
+        $this->data['pagerStart']   = ($page - 1) * $perPage;
 
         //reset query with pagination
         $builder->resetQuery();
@@ -382,8 +396,7 @@ class Document extends BaseController
         $builder->where('category', 'umum');
         $builder->where('sub_category', 'lainnya');
         $builder->where('status', '1');
-        if(trim($keywords))
-        {
+        if (trim($keywords)) {
             $keywords = trim($keywords);
             $builder->groupStart()
                 ->like('title', $keywords)
@@ -445,8 +458,7 @@ class Document extends BaseController
         $list = [];
         $option_name = $this->request->getGet('option_name');
         $list = json_decode(getOption($option_name, $this->db), true);
-        if($list)
-        {
+        if ($list) {
             array_multisort(
                 array_column($list, 'title'),
                 SORT_ASC,
@@ -462,7 +474,7 @@ class Document extends BaseController
         $slug   = strtolower(trim(preg_replace('/[^A-Za-z0-9-]+/', '-', $title)));
 
         $option = json_decode(getOption('jenis_transparansi', $this->db), true);
-        array_push($option, ['title'=>$title, 'slug'=>$slug]);
+        array_push($option, ['title' => $title, 'slug' => $slug]);
         updateOption('jenis_transparansi', json_encode($option), $this->db);
     }
 
@@ -471,14 +483,12 @@ class Document extends BaseController
         $slug       = $this->request->getGet('slug');
         $newOption  = [];
         $option     = json_decode(getOption('jenis_transparansi', $this->db));
-        foreach($option as $o)
-        {
-            if($o->slug != $slug) array_push($newOption, [
+        foreach ($option as $o) {
+            if ($o->slug != $slug) array_push($newOption, [
                 'title' => $o->title,
                 'slug'  => $o->slug,
             ]);
         }
         updateOption('jenis_transparansi', json_encode($newOption), $this->db);
     }
-
 }

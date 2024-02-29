@@ -2,6 +2,8 @@
 
 namespace App\Controllers;
 
+use Google\Cloud\Storage\StorageClient;
+
 use function PHPUnit\Framework\assertDirectoryDoesNotExist;
 
 class Page extends BaseController
@@ -16,7 +18,7 @@ class Page extends BaseController
         $this->prefix   = $this->db->getPrefix();
         helper([
             'date', 'my_date', 'text', 'security', 'page',
-            'option','menu','category','service', 'comment',
+            'option', 'menu', 'category', 'service', 'comment',
             'counter',
         ]);
 
@@ -40,7 +42,7 @@ class Page extends BaseController
     public function index()
     {
         //always check authentication
-        if(!session()->ID) return redirect()->to('login');
+        if (!session()->ID) return redirect()->to('login');
 
         //check search form
         $status = $this->request->getGet('status');
@@ -51,8 +53,7 @@ class Page extends BaseController
         $builder = $this->db->table('page');
         $builder->selectCount('ID');
         $builder->where('status', $status);
-        if($keywords)
-        {
+        if ($keywords) {
             $builder->groupStart()
                 ->like('page.title', $keywords)
                 ->orLike('page.content', $keywords)
@@ -69,15 +70,14 @@ class Page extends BaseController
         // Call makeLinks() to make pagination links.
         $pager_links = $pager->makeLinks($page, $perPage, $total);
         $this->data['pager']        = $pager_links;
-        $this->data['pagerStart']   = ($page-1)*$perPage;
+        $this->data['pagerStart']   = ($page - 1) * $perPage;
 
         //retrieve with pagination
         $builder->resetQuery();
         $builder->select('page.ID,page.ID_page,page.title,page.slug,page.date_created,page.hits,page.place_order,user.username');
         $builder->join('user', 'user.ID = page.ID_user');
         $builder->where('status', $status);
-        if($keywords)
-        {
+        if ($keywords) {
             $builder->groupStart()
                 ->like('page.title', $keywords)
                 ->orLike('page.content', $keywords)
@@ -90,8 +90,7 @@ class Page extends BaseController
 
         //counting comments
         $pageIDs = [];
-        foreach($result as $p)
-        {
+        foreach ($result as $p) {
             $pageIDs[] = $p->ID;
         }
         //query count from table
@@ -102,8 +101,7 @@ class Page extends BaseController
         $builder->groupBy('ID_post_page');
         $result = $builder->get()->getResult();
         $comment = [];
-        foreach($result as $r)
-        {
+        foreach ($result as $r) {
             $comment[$r->ID_page] = $r->counts;
         }
         $this->data['commentsCount'] = $comment;
@@ -114,8 +112,7 @@ class Page extends BaseController
         $builder = $this->db->table('page');
         $builder->select('ID,title');
         $result = $builder->get()->getResult();
-        foreach($result as $res)
-        {
+        foreach ($result as $res) {
             $parent[$res->ID] = $res->title;
         }
         $this->data['parents'] = $parent;
@@ -133,14 +130,14 @@ class Page extends BaseController
         $builder->select('slug');
         $builder->where('slug', $slug);
         $result = $builder->get()->getRow();
-        if($result) $slug = increment_string($slug, '_');
+        if ($result) $slug = increment_string($slug, '_');
         return $slug;
     }
 
     public function new()
     {
         //always check authentication
-        if(!session()->ID) return redirect()->to('login');
+        if (!session()->ID) return redirect()->to('login');
 
         //retrieve page data
         $builder = $this->db->table('page');
@@ -164,7 +161,7 @@ class Page extends BaseController
     public function addNew()
     {
         //always check authentication
-        if(!session()->ID) return redirect()->to('login');
+        if (!session()->ID) return redirect()->to('login');
 
         //get post form data
         $title          = $this->request->getPost('title');
@@ -173,7 +170,7 @@ class Page extends BaseController
         $parent         = $this->request->getPost('parent');
         $tags           = $this->request->getPost('tags');
         $author         = $this->request->getPost('author');
-        $date_created   = $this->request->getPost('date').date(' H:i:s', now());
+        $date_created   = $this->request->getPost('date') . date(' H:i:s', now());
         $last_modified  = $date_created;
         $status         = ($this->request->getPost('publish-now')) ? '1' : '0';
         $image          = $this->request->getFile('image');
@@ -185,27 +182,55 @@ class Page extends BaseController
         $name           = '';
         $onlyName       = '';
         $onlyExtension  = '';
-        $path = ROOTPATH.'public/upload/img/';
-        if($image->isValid() && !$image->hasMoved())
-        {
+        $path = ROOTPATH . 'public/upload/img/';
+        if ($image->isValid() && !$image->hasMoved()) {
+            // Generate a random name for the image
             $name = $image->getRandomName();
+
+            // Move the image to the specified path with the generated name
             $image->move($path, $name);
 
-            $namE           = explode('.', $name);
-            $onlyName       = $namE[0];
-            $onlyExtension  = $namE[1];
+            // Extract the name and extension of the image file
+            $nameParts = pathinfo($name);
+            $onlyName = $nameParts['filename'];
+            $onlyExtension = $nameParts['extension'];
 
-            //resizing image
+            // Resize the image and save it as a thumbnail
             $thumbnail = \Config\Services::image();
-            $thumbnail->withFile($path.$name)
+            $thumbnail->withFile($path . $name)
                 ->resize(350, 350, true, 'width')
-                ->save($path.$onlyName.'_thumb.'.$onlyExtension);
+                ->save($path . $onlyName . '_thumb.' . $onlyExtension);
 
-            //set image url
-            $image = base_url('upload/img/'.$onlyName.'_thumb.'.$onlyExtension);
-        }
-        else
-        {
+            // Initialize Google Cloud Storage client
+            $storage = new StorageClient([
+                'keyFilePath' => ROOTPATH . 'public/service-account-key.json',
+                'projectId' => 'diskominfo-wonosobo',
+            ]);
+
+            // Specify the bucket and file names in GCS
+            $bucketName = 'dikpora';
+            $objectName = 'upload/pages/img/' . $name;
+            $thumbnailObjectName = 'upload/pages/img/' . $onlyName . '_thumb.' . $onlyExtension;
+
+            // Upload the original image to GCS
+            $bucket = $storage->bucket($bucketName);
+            $bucket->upload(fopen($path . $name, 'r'), [
+                'name' => $objectName,
+            ]);
+
+            // Upload the thumbnail to GCS
+            $bucket->upload(fopen($path . $onlyName . '_thumb.' . $onlyExtension, 'r'), [
+                'name' => $thumbnailObjectName,
+            ]);
+
+            // Delete the local temporary files
+            unlink($path . $name);
+            unlink($path . $onlyName . '_thumb.' . $onlyExtension);
+
+            // Set image URLs as the final result
+            // $image = $imageUrl;
+            $image = $thumbnailObjectName;
+        } else {
             $image = '';
         }
 
@@ -234,15 +259,12 @@ class Page extends BaseController
 
         //check if inserted
         $alert = [];
-        if($this->db->affectedRows() > 0)
-        {
+        if ($this->db->affectedRows() > 0) {
             $alert = [
                 'type'      => 'success',
                 'message'   => 'Berhasil menyimpan halaman baru.'
             ];
-        }
-        else
-        {
+        } else {
             $alert = [
                 'type'      => 'danger',
                 'message'   => 'Gagal menyimpan halaman baru!'
@@ -256,14 +278,14 @@ class Page extends BaseController
     public function edit()
     {
         //always check authentication
-        if(!session()->ID) return redirect()->to('login');
+        if (!session()->ID) return redirect()->to('login');
 
         $id = $this->request->getGet('id');
         //retrieve post data
         $builder = $this->db->table('page');
         $builder->where('ID', $id);
         $result = $builder->get()->getRow();
-        if(!$result) return redirect()->to('page');
+        if (!$result) return redirect()->to('page');
         $this->data['page'] = $result;
 
         //retrieve all pages
@@ -288,7 +310,7 @@ class Page extends BaseController
     public function update()
     {
         //always check authentication
-        if(!session()->ID) return redirect()->to('login');
+        if (!session()->ID) return redirect()->to('login');
 
         //get post form data
         $id             = $this->request->getPost('id');
@@ -298,7 +320,7 @@ class Page extends BaseController
         $parent         = $this->request->getPost('parent');
         $tags           = $this->request->getPost('tags');
         $author         = $this->request->getPost('author');
-        $date_created   = $this->request->getPost('date').date(' H:i:s', now());
+        $date_created   = $this->request->getPost('date') . date(' H:i:s', now());
         $last_modified  = date('Y-m-d H:i:s', now());
         $place_order    = $this->request->getPost('place-order');
         $css_id         = $this->request->getPost('css-id');
@@ -311,27 +333,55 @@ class Page extends BaseController
         $name           = '';
         $onlyName       = '';
         $onlyExtension  = '';
-        $path = ROOTPATH.'public/upload/img/';
-        if($image->isValid() && !$image->hasMoved())
-        {
+        $path = ROOTPATH . 'public/upload/img/';
+        if ($image->isValid() && !$image->hasMoved()) {
+            // Generate a random name for the image
             $name = $image->getRandomName();
+
+            // Move the image to the specified path with the generated name
             $image->move($path, $name);
 
-            $namE           = explode('.', $name);
-            $onlyName       = $namE[0];
-            $onlyExtension  = $namE[1];
+            // Extract the name and extension of the image file
+            $nameParts = pathinfo($name);
+            $onlyName = $nameParts['filename'];
+            $onlyExtension = $nameParts['extension'];
 
-            //resizing image
+            // Resize the image and save it as a thumbnail
             $thumbnail = \Config\Services::image();
-            $thumbnail->withFile($path.$name)
+            $thumbnail->withFile($path . $name)
                 ->resize(350, 350, true, 'width')
-                ->save($path.$onlyName.'_thumb.'.$onlyExtension);
+                ->save($path . $onlyName . '_thumb.' . $onlyExtension);
 
-            //set image url
-            $image = base_url('upload/img/'.$onlyName.'_thumb.'.$onlyExtension);
-        }
-        else
-        {
+            // Initialize Google Cloud Storage client
+            $storage = new StorageClient([
+                'keyFilePath' => ROOTPATH . 'public/service-account-key.json',
+                'projectId' => 'diskominfo-wonosobo',
+            ]);
+
+            // Specify the bucket and file names in GCS
+            $bucketName = 'dikpora';
+            $objectName = 'upload/pages/img/' . $name;
+            $thumbnailObjectName = 'upload/pages/img/' . $onlyName . '_thumb.' . $onlyExtension;
+
+            // Upload the original image to GCS
+            $bucket = $storage->bucket($bucketName);
+            $bucket->upload(fopen($path . $name, 'r'), [
+                'name' => $objectName,
+            ]);
+
+            // Upload the thumbnail to GCS
+            $bucket->upload(fopen($path . $onlyName . '_thumb.' . $onlyExtension, 'r'), [
+                'name' => $thumbnailObjectName,
+            ]);
+
+            // Delete the local temporary files
+            unlink($path . $name);
+            unlink($path . $onlyName . '_thumb.' . $onlyExtension);
+
+            // Set image URLs as the final result
+            // $image = $imageUrl;
+            $image = $thumbnailObjectName;
+        } else {
             $image = $image_old;
         }
 
@@ -359,67 +409,49 @@ class Page extends BaseController
 
         //check if inserted
         $alert = [];
-        if($this->db->affectedRows() > 0)
-        {
+        if ($this->db->affectedRows() > 0) {
             //memperbarui nav_menu
-            if($parent)
-            {
+            if ($parent) {
                 $optionNavMenu = getOption('nav_menu', $this->db);
                 $optionNavMenu = unserialize($optionNavMenu);
-                for($i=0;$i<count($optionNavMenu);$i++)
-                {
-                    if($optionNavMenu[$i]['menu_ID'] == $parent)
-                    {
+                for ($i = 0; $i < count($optionNavMenu); $i++) {
+                    if ($optionNavMenu[$i]['menu_ID'] == $parent) {
                         $childs = $optionNavMenu[$i]['menu_child'];
                         $exists = false;
-                        for($j=0;$j<count($childs);$j++)
-                        {
-                            if($childs[$j]['menu_ID'] == $id) $exists = true;
+                        for ($j = 0; $j < count($childs); $j++) {
+                            if ($childs[$j]['menu_ID'] == $id) $exists = true;
                         }
-                        if(!$exists)
-                        {
+                        if (!$exists) {
                             array_push($optionNavMenu[$i]['menu_child'], [
                                 'menu_ID'    => $id,
                                 'menu_child' => [],
                             ]);
                         }
-                    }
-                    else
-                    {
+                    } else {
                         $childs = $optionNavMenu[$i]['menu_child'];
-                        for($j=0;$j<count($childs);$j++)
-                        {
-                            if($childs[$j]['menu_ID'] == $parent)
-                            {
+                        for ($j = 0; $j < count($childs); $j++) {
+                            if ($childs[$j]['menu_ID'] == $parent) {
                                 $childz = $childs[$j]['menu_child'];
                                 $existz = false;
-                                for($k=0;$k<count($childz);$k++)
-                                {
-                                    if($childz[$k]['menu_ID'] == $id) $existz = true;
+                                for ($k = 0; $k < count($childz); $k++) {
+                                    if ($childz[$k]['menu_ID'] == $id) $existz = true;
                                 }
-                                if(!$existz)
-                                {
+                                if (!$existz) {
                                     array_push($optionNavMenu[$i]['menu_child'][$j]['menu_child'], [
                                         'menu_ID'    => $id,
                                         'menu_child' => [],
                                     ]);
                                 }
-                            }
-                            else
-                            {
+                            } else {
                                 $childz = $childs[$j]['menu_child'];
-                                for($k=0; $k<count($childz);$k++)
-                                {
-                                    if($childz[$k]['menu_ID'] == $parent)
-                                    {
+                                for ($k = 0; $k < count($childz); $k++) {
+                                    if ($childz[$k]['menu_ID'] == $parent) {
                                         $childx = $childz[$k]['menu_child'];
                                         $existx = false;
-                                        for($l=0;$l<count($childx);$l++)
-                                        {
-                                            if($childx[$l]['menu_ID'] == $id) $existx = true;
+                                        for ($l = 0; $l < count($childx); $l++) {
+                                            if ($childx[$l]['menu_ID'] == $id) $existx = true;
                                         }
-                                        if(!$existx)
-                                        {
+                                        if (!$existx) {
                                             array_push($optionNavMenu[$i]['menu_child'][$j]['menu_child'][$k]['menu_child'], [
                                                 'menu_ID'    => $id,
                                                 'menu_child' => [],
@@ -437,9 +469,7 @@ class Page extends BaseController
                 'type'      => 'success',
                 'message'   => 'Berhasil memperbaharui halaman.'
             ];
-        }
-        else
-        {
+        } else {
             $alert = [
                 'type'      => 'danger',
                 'message'   => 'Gagal memperbaharui halaman!'
@@ -461,8 +491,7 @@ class Page extends BaseController
         $builder->update();
 
         $stat = ($status === '0') ? 'menghapus' : 'merestore';
-        if($this->db->affectedRows() > 0)
-        {
+        if ($this->db->affectedRows() > 0) {
             //memperbarui nav_menu
             $optionNavMenu = getOption('nav_menu', $this->db);
             $optionNavMenu = unserialize($optionNavMenu);
@@ -470,44 +499,29 @@ class Page extends BaseController
             $builder->select('ID_page');
             $builder->where('ID', $id);
             $parent = $builder->get()->getRow()->ID_page;
-            for($i=0;$i<count($optionNavMenu);$i++)
-            {
-                if($status === '0')
-                {
+            for ($i = 0; $i < count($optionNavMenu); $i++) {
+                if ($status === '0') {
                     $child = $optionNavMenu[$i]['menu_child'];
-                    for($j=0;$j<count($child);$j++)
-                    {
-                        if($child[$j]['menu_ID'] == $id)
-                        {
+                    for ($j = 0; $j < count($child); $j++) {
+                        if ($child[$j]['menu_ID'] == $id) {
                             unset($optionNavMenu[$i]['menu_child'][$j]);
                             $optionNavMenu[$i]['menu_child'] = array_values($optionNavMenu[$i]['menu_child']);
-                        }
-                        else
-                        {
+                        } else {
                             $childs = $child[$j]['menu_child'];
-                            for($k=0;$k<count($childs);$k++)
-                            {
-                                if($childs[$k]['menu_ID'] == $id)
-                                {
+                            for ($k = 0; $k < count($childs); $k++) {
+                                if ($childs[$k]['menu_ID'] == $id) {
                                     unset($optionNavMenu[$i]['menu_child'][$j]['menu_child'][$k]);
                                     $optionNavMenu[$i]['menu_child'][$j]['menu_child'] = array_values($optionNavMenu[$i]['menu_child'][$j]['menu_child']);
-                                }
-                                else
-                                {
+                                } else {
                                     $childz = $childs[$k]['menu_child'];
-                                    for($l=0;$l<count($childz);$l++)
-                                    {
-                                        if($childz[$l]['menu_ID'] == $id)
-                                        {
+                                    for ($l = 0; $l < count($childz); $l++) {
+                                        if ($childz[$l]['menu_ID'] == $id) {
                                             unset($optionNavMenu[$i]['menu_child'][$j]['menu_child'][$k]['menu_child'][$l]);
                                             $optionNavMenu[$i]['menu_child'][$j]['menu_child'][$k]['menu_child'] = array_values($optionNavMenu[$i]['menu_child'][$j]['menu_child'][$k]['menu_child']);
-                                        }
-                                        else
-                                        {
+                                        } else {
                                             $child0 = $childz[$l]['menu_child'];
-                                            for($m=0;$m<count($child0);$m++)
-                                            {
-                                                if($child0[$m]['menu_ID'] == $id) unset($optionNavMenu[$i]['menu_child'][$j]['menu_child'][$k]['menu_child'][$l]['menu_child'][$m]);
+                                            for ($m = 0; $m < count($child0); $m++) {
+                                                if ($child0[$m]['menu_ID'] == $id) unset($optionNavMenu[$i]['menu_child'][$j]['menu_child'][$k]['menu_child'][$l]['menu_child'][$m]);
                                                 $optionNavMenu[$i]['menu_child'][$j]['menu_child'][$k]['menu_child'][$l]['menu_child'] = array_values($optionNavMenu[$i]['menu_child'][$j]['menu_child'][$k]['menu_child'][$l]['menu_child']);
                                             }
                                         }
@@ -518,82 +532,59 @@ class Page extends BaseController
                     }
                     //reindex after unset
                     $optionNavMenu[$i]['menu_child'] = array_values($optionNavMenu[$i]['menu_child']);
-                }
-                else
-                {
-                    if($optionNavMenu[$i]['menu_ID'] == $parent)
-                    {
+                } else {
+                    if ($optionNavMenu[$i]['menu_ID'] == $parent) {
                         $childs = $optionNavMenu[$i]['menu_child'];
                         $exists = false;
-                        for($j=0;$j<count($childs);$j++)
-                        {
-                            if($childs[$j]['menu_ID'] == $id) $exists = true;
+                        for ($j = 0; $j < count($childs); $j++) {
+                            if ($childs[$j]['menu_ID'] == $id) $exists = true;
                         }
-                        if(!$exists)
-                        {
+                        if (!$exists) {
                             array_push($optionNavMenu[$i]['menu_child'], [
                                 'menu_ID'    => $id,
                                 'menu_child' => [],
                             ]);
                         }
-                    }
-                    else
-                    {
+                    } else {
                         $child = $optionNavMenu[$i]['menu_child'];
-                        for($j=0;$j<count($child);$j++)
-                        {
-                            if($child[$j]['menu_ID'] == $parent)
-                            {
+                        for ($j = 0; $j < count($child); $j++) {
+                            if ($child[$j]['menu_ID'] == $parent) {
                                 $childs = $child[$j]['menu_child'];
                                 $exist = false;
-                                for($k=0;$k<count($childs);$k++)
-                                {
-                                    if($childs[$k]['menu_ID'] == $id) $exist = true;
+                                for ($k = 0; $k < count($childs); $k++) {
+                                    if ($childs[$k]['menu_ID'] == $id) $exist = true;
                                 }
-                                if(!$exist)
-                                {
+                                if (!$exist) {
                                     array_push($optionNavMenu[$i]['menu_child'][$j]['menu_child'], [
                                         'menu_ID'    => $id,
                                         'menu_child' => [],
                                     ]);
                                 }
-                            }
-                            else
-                            {
+                            } else {
                                 $childs = $child[$j]['menu_child'];
-                                for($k=0;$k<count($childs);$k++)
-                                {
-                                    if($childs[$k]['menu_ID'] == $parent)
-                                    {
+                                for ($k = 0; $k < count($childs); $k++) {
+                                    if ($childs[$k]['menu_ID'] == $parent) {
                                         $childz = $childs[$k]['menu_child'];
                                         $exists = false;
-                                        for($l=0;$l<count($childz);$l++)
-                                        {
-                                            if($childz[$l]['menu_ID'] == $id) $exists = true;
+                                        for ($l = 0; $l < count($childz); $l++) {
+                                            if ($childz[$l]['menu_ID'] == $id) $exists = true;
                                         }
-                                        if(!$exists)
-                                        {
+                                        if (!$exists) {
                                             array_push($optionNavMenu[$i]['menu_child'][$j]['menu_child'][$k]['menu_child'], [
                                                 'menu_ID'    => $id,
                                                 'menu_child' => [],
                                             ]);
                                         }
-                                    }
-                                    else
-                                    {
+                                    } else {
                                         $childz = $childs[$k]['menu_child'];
-                                        for($l=0;$l<count($childz);$l++)
-                                        {
-                                            if($childz[$l]['menu_ID'] == $parent)
-                                            {
+                                        for ($l = 0; $l < count($childz); $l++) {
+                                            if ($childz[$l]['menu_ID'] == $parent) {
                                                 $child0 = $childz[$l]['menu_child'];
                                                 $existz = false;
-                                                for($m=0;$m<count($child0);$m++)
-                                                {
-                                                    if($child0[$m]['menu_ID'] == $id) $existz = true;
+                                                for ($m = 0; $m < count($child0); $m++) {
+                                                    if ($child0[$m]['menu_ID'] == $id) $existz = true;
                                                 }
-                                                if(!$existz)
-                                                {
+                                                if (!$existz) {
                                                     array_push($optionNavMenu[$i]['menu_child'][$j]['menu_child'][$k]['menu_child'][$l]['menu_child'], [
                                                         'menu_ID'    => $id,
                                                         'menu_child' => [],
@@ -614,9 +605,7 @@ class Page extends BaseController
                 'type'      => 'success',
                 'message'   => "Berhasil {$stat} halaman yang dipilih.",
             ]);
-        }
-        else
-        {
+        } else {
             session()->setFlashdata('alert', [
                 'type'      => 'danger',
                 'message'   => "Gagal {$stat} halaman yang dipilih!",
@@ -712,7 +701,7 @@ class Page extends BaseController
                 ],
             ]),
         ], $this->db);
-        */
+         */
 
         $news_ID_category = 6;
         //retrieve page data
@@ -720,7 +709,7 @@ class Page extends BaseController
         $builder->where('slug', $slug);
         $result = $builder->get()->getRow();
         //redirect to search if not found
-        if(!$result) return redirect()->to('https://www.google.com/search?q='.urlencode(str_replace('-',' ', $slug.' dikpora wonosobo')));
+        if (!$result) return redirect()->to('https://www.google.com/search?q=' . urlencode(str_replace('-', ' ', $slug . ' dikpora wonosobo')));
         $this->data['article'] = $result;
 
         //comment form
@@ -809,27 +798,24 @@ class Page extends BaseController
         $builder->select('ID,ID_category');
         $builder->where('status', '1');
         $result = $builder->get()->getResult();
-        foreach($result as $res)
-        {
+        foreach ($result as $res) {
             $IDcats = explode(',', $res->ID_category);
             //check one by one of newscats id
-            for($i=0; $i<count($newsCats); $i++)
-            {
-                if(in_array($newsCats[$i]['ID'], $IDcats))
-                {
+            for ($i = 0; $i < count($newsCats); $i++) {
+                if (in_array($newsCats[$i]['ID'], $IDcats)) {
                     $IDs[] = $res->ID;
                     break;
                 }
             }
         }
 
-        if(!$IDs) $IDs = [2147483647];
+        if (!$IDs) $IDs = [2147483647];
 
         $builder->resetQuery();
         $builder->selectCount('ID');
         $builder->where('status', '1');
         $builder->whereIn('ID', $IDs);
-        if($keywords) $builder->like('title', $keywords);
+        if ($keywords) $builder->like('title', $keywords);
         $result = $builder->get()->getRow();
 
         //pagination
@@ -840,14 +826,14 @@ class Page extends BaseController
         // Call makeLinks() to make pagination links.
         $pager_links = $pager->makeLinks($page, $perPage, $total);
         $this->data['pager']        = $pager_links;
-        $this->data['pagerStart']   = ($page-1)*$perPage;
+        $this->data['pagerStart']   = ($page - 1) * $perPage;
 
         //paged post
         $builder->resetQuery();
         $builder->select('title,slug,last_modified');
         $builder->where('status', '1');
         $builder->whereIn('ID', $IDs);
-        if($keywords) $builder->like('title', $keywords);
+        if ($keywords) $builder->like('title', $keywords);
         $builder->orderBy('last_modified', 'DESC');
         $builder->limit($perPage, $this->data['pagerStart']);
         $result = $builder->get()->getResult();
@@ -898,7 +884,5 @@ class Page extends BaseController
         echo view('header', $this->data);
         echo view('dip');
         echo view('footer');
-
     }
-
 }

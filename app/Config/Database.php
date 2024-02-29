@@ -32,9 +32,9 @@ class Database extends Config
      */
     public $default = [
         'DSN'      => '',
-        'hostname' => '10.0.1.9',
-        'username' => 'dikpora',
-        'password' => 'P3nd1d1k4nDB2023',
+        'hostname' => 'localhost',
+        'username' => 'root',
+        'password' => '',
         'database' => 'dikpora',
         'DBDriver' => 'MySQLi',
         'DBPrefix' => 'dpu_',

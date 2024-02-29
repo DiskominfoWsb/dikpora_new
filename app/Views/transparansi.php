@@ -8,7 +8,8 @@
                         (function(d, s, id) {
                             var js, fjs = d.getElementsByTagName(s)[0];
                             if (d.getElementById(id)) return;
-                            js = d.createElement(s); js.id = id;
+                            js = d.createElement(s);
+                            js.id = id;
                             js.src = "https://connect.facebook.net/en_US/sdk.js#xfbml=1&version=v3.0";
                             fjs.parentNode.insertBefore(js, fjs);
                         }(document, 'script', 'facebook-jssdk'));
@@ -30,7 +31,8 @@
                             };
 
                             return t;
-                        }(document, "script", "twitter-wjs"));</script>
+                        }(document, "script", "twitter-wjs"));
+                    </script>
                     <a class="twitter-share-button" href="https://twitter.com/intent/tweet">Tweet</a>&nbsp;
                     <a href="whatsapp://send?text=<?php echo urlencode(current_url()); ?>" class="d-inline-block a-normal cursor-pointer text-light rounded-pill bg-success" style="height: 20px; font-size: 9pt; padding: 1px 10px 1px 7px; cursor: pointer;">
                         <i class="bi bi-whatsapp"></i> Share
@@ -47,10 +49,10 @@
                                 <select name="sub-category" class="form-select" onchange="this.form.submit()">
                                     <option value="0">Jenis</option>
                                     <?php
-                                        foreach($subcategory as $subc):
-                                            $selected = (@$_GET['sub-category'] == $subc['slug']) ? ' selected="selected"' : '';
-                                            echo '<option value="'.$subc['slug'].'"'.$selected.'>'.$subc['title'].'</option>';
-                                        endforeach;
+                                    foreach ($subcategory as $subc) :
+                                        $selected = (@$_GET['sub-category'] == $subc['slug']) ? ' selected="selected"' : '';
+                                        echo '<option value="' . $subc['slug'] . '"' . $selected . '>' . $subc['title'] . '</option>';
+                                    endforeach;
                                     ?>
                                 </select>
                             </div>
@@ -58,10 +60,10 @@
                                 <select name="fiscal" class="form-select" onchange="this.form.submit()">
                                     <option value="0">Tahun</option>
                                     <?php
-                                        foreach($fiscal as $fisc):
-                                            $selected = (@$_GET['fiscal'] == $fisc->fiscal) ? ' selected="selected"' : '';
-                                            echo '<option value="'.$fisc->fiscal.'"'.$selected.'>'.$fisc->fiscal.'</option>';
-                                        endforeach;
+                                    foreach ($fiscal as $fisc) :
+                                        $selected = (@$_GET['fiscal'] == $fisc->fiscal) ? ' selected="selected"' : '';
+                                        echo '<option value="' . $fisc->fiscal . '"' . $selected . '>' . $fisc->fiscal . '</option>';
+                                    endforeach;
                                     ?>
                                 </select>
                             </div>
@@ -84,36 +86,36 @@
                                     <th class="text-center"><i class="bi bi-download"></i></th>
                                     <th class="text-center">Tanggal</th>
                                 </tr>
-                                <?php if(!$document): ?>
-                                <tr>
-                                    <td colspan="4" class="p-2 text-center text-danger fw-bold fst-italic">
-                                        ... dokumen tidak ditemukan!
-                                    </td>
-                                </tr>
+                                <?php if (!$document) : ?>
+                                    <tr>
+                                        <td colspan="4" class="p-2 text-center text-danger fw-bold fst-italic">
+                                            ... dokumen tidak ditemukan!
+                                        </td>
+                                    </tr>
                                 <?php endif; ?>
-                                <?php $i = $pagerStart+1; ?>
-                                <?php foreach($document as $doc): ?>
-                                <tr>
-                                    <td class="text-center"><?php echo $i; ?>.</td>
-                                    <td><?php echo $doc->title; ?></td>
-                                    <td class="text-center">
-                                        <small>
-                                            <a href="<?php echo $doc->url; ?>" class="d-block px-1 text-center text-light bg-success a-normal rounded">
-                                                <i class="bi bi-download"></i>
-                                            </a>
-                                        </small>
-                                    </td>
-                                    <td class="text-center">
-                                        <small><?php echo date('d/m/Y', strtotime($doc->date_uploaded)); ?></small>
-                                    </td>
-                                </tr>
-                                <?php $i++; ?>
+                                <?php $i = $pagerStart + 1; ?>
+                                <?php foreach ($document as $doc) : ?>
+                                    <tr>
+                                        <td class="text-center"><?php echo $i; ?>.</td>
+                                        <td><?php echo $doc->title; ?></td>
+                                        <td class="text-center">
+                                            <small>
+                                                <a target="_blank" href="<?php echo coba($doc->url); ?>" class="d-block px-1 text-center text-light bg-success a-normal rounded">
+                                                    <i class="bi bi-download"></i>
+                                                </a>
+                                            </small>
+                                        </td>
+                                        <td class="text-center">
+                                            <small><?php echo date('d/m/Y', strtotime($doc->date_uploaded)); ?></small>
+                                        </td>
+                                    </tr>
+                                    <?php $i++; ?>
                                 <?php endforeach; ?>
                             </tbody>
                         </table>
                     </div>
                     <div class="">
-                        <?php echo $pager = str_replace(['<ul class="pagination"','<li>','<a'],['<ul class="pagination pagination-sm"','<li class="page-item">','<a class="page-link"'], $pager); ?>
+                        <?php echo $pager = str_replace(['<ul class="pagination"', '<li>', '<a'], ['<ul class="pagination pagination-sm"', '<li class="page-item">', '<a class="page-link"'], $pager); ?>
                     </div>
                 </article>
             </div>

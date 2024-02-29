@@ -24,7 +24,8 @@ class App extends BaseConfig
      *
      * @var string
      */
-    public $baseURL = 'https://dikpora.wonosobokab.go.id/';
+    // public $baseURL = 'https://dikpora.wonosobokab.go.id/';
+    public $baseURL = 'http://localhost/dikpora/public/';
 
     /**
      * --------------------------------------------------------------------------

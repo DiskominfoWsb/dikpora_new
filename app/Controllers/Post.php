@@ -2,6 +2,8 @@
 
 namespace App\Controllers;
 
+use Google\Cloud\Storage\StorageClient;
+
 class Post extends BaseController
 {
     protected $db;
@@ -14,7 +16,7 @@ class Post extends BaseController
         $this->prefix   = $this->db->getPrefix();
         helper([
             'date', 'my_date', 'text', 'security', 'page',
-            'option','menu','category','service', 'comment',
+            'option', 'menu', 'category', 'service', 'comment',
             'counter',
         ]);
 
@@ -41,7 +43,7 @@ class Post extends BaseController
     public function index()
     {
         //always check authentication
-        if(!session()->ID) return redirect()->to('login');
+        if (!session()->ID) return redirect()->to('login');
 
         //check search form
         $status = $this->request->getGet('status');
@@ -52,8 +54,7 @@ class Post extends BaseController
         $builder = $this->db->table('post');
         $builder->selectCount('ID');
         $builder->where('status', $status);
-        if($keywords)
-        {
+        if ($keywords) {
             $builder->groupStart()
                 ->like('post.title', $keywords)
                 ->orLike('post.content', $keywords)
@@ -69,15 +70,14 @@ class Post extends BaseController
         // Call makeLinks() to make pagination links.
         $pager_links = $pager->makeLinks($page, $perPage, $total);
         $this->data['pager']        = $pager_links;
-        $this->data['pagerStart']   = ($page-1)*$perPage;
+        $this->data['pagerStart']   = ($page - 1) * $perPage;
 
         //retrieve with pagination
         $builder->resetQuery();
         $builder->select('post.ID,post.title,post.slug,post.date_created,post.hits,user.username');
         $builder->join('user', 'user.ID = post.ID_user');
         $builder->where('post.status', $status);
-        if($keywords)
-        {
+        if ($keywords) {
             $builder->groupStart()
                 ->like('post.title', $keywords)
                 ->orLike('post.content', $keywords)
@@ -90,8 +90,7 @@ class Post extends BaseController
 
         //counting comments
         $postIDs = [];
-        foreach($result as $p)
-        {
+        foreach ($result as $p) {
             $postIDs[] = $p->ID;
         }
         //query count from table
@@ -102,8 +101,7 @@ class Post extends BaseController
         $builder->groupBy('ID_post_page');
         $result = $builder->get()->getResult();
         $comment = [];
-        foreach($result as $r)
-        {
+        foreach ($result as $r) {
             $comment[$r->ID_post] = $r->counts;
         }
         $this->data['commentsCount'] = $comment;
@@ -121,14 +119,14 @@ class Post extends BaseController
         $builder->select('slug');
         $builder->where('slug', $slug);
         $result = $builder->get()->getRow();
-        if($result) $slug = increment_string($slug, '_');
+        if ($result) $slug = increment_string($slug, '_');
         return $slug;
     }
 
     public function new()
     {
         //always check authentication
-        if(!session()->ID) return redirect()->to('login');
+        if (!session()->ID) return redirect()->to('login');
 
         //retrieve category data
         $builder = $this->db->table('category');
@@ -152,7 +150,7 @@ class Post extends BaseController
     public function addNew()
     {
         //always check authentication
-        if(!session()->ID) return redirect()->to('login');
+        if (!session()->ID) return redirect()->to('login');
 
         //get post form data
         $title          = $this->request->getPost('title');
@@ -161,18 +159,15 @@ class Post extends BaseController
         $category       = $this->request->getPost('category');
         $tags           = $this->request->getPost('tags');
         $author         = $this->request->getPost('author');
-        $date_created   = $this->request->getPost('date').date(' H:i:s', now());
+        $date_created   = $this->request->getPost('date') . date(' H:i:s', now());
         $last_modified  = $date_created;
         $status         = ($this->request->getPost('publish-now')) ? '1' : '0';
         $image          = $this->request->getFile('image');
 
         //processing multiple categories
-        if($category)
-        {
+        if ($category) {
             $category = implode(',', $category);
-        }
-        else
-        {
+        } else {
             $category = '1';
         }
 
@@ -180,29 +175,58 @@ class Post extends BaseController
         $name           = '';
         $onlyName       = '';
         $onlyExtension  = '';
-        $path = ROOTPATH.'public/upload/img/';
-        if($image->isValid() && !$image->hasMoved())
-        {
+        $path = ROOTPATH . 'public/upload/img/';
+        if ($image->isValid() && !$image->hasMoved()) {
+            // Generate a random name for the image
             $name = $image->getRandomName();
+
+            // Move the image to the specified path with the generated name
             $image->move($path, $name);
 
-            $namE           = explode('.', $name);
-            $onlyName       = $namE[0];
-            $onlyExtension  = $namE[1];
+            // Extract the name and extension of the image file
+            $nameParts = pathinfo($name);
+            $onlyName = $nameParts['filename'];
+            $onlyExtension = $nameParts['extension'];
 
-            //resizing image
+            // Resize the image and save it as a thumbnail
             $thumbnail = \Config\Services::image();
-            $thumbnail->withFile($path.$name)
+            $thumbnail->withFile($path . $name)
                 ->resize(350, 350, true, 'width')
-                ->save($path.$onlyName.'_thumb.'.$onlyExtension);
+                ->save($path . $onlyName . '_thumb.' . $onlyExtension);
 
-            //set image url
-            $image = base_url('upload/img/'.$onlyName.'_thumb.'.$onlyExtension);
+            // Initialize Google Cloud Storage client
+            $storage = new StorageClient([
+                'keyFilePath' => ROOTPATH . 'public/service-account-key.json',
+                'projectId' => 'diskominfo-wonosobo',
+            ]);
+
+            // Specify the bucket and file names in GCS
+            $bucketName = 'dikpora';
+            $objectName = 'upload/img/' . $name;
+            $thumbnailObjectName = 'upload/img/' . $onlyName . '_thumb.' . $onlyExtension;
+
+            // Upload the original image to GCS
+            $bucket = $storage->bucket($bucketName);
+            $bucket->upload(fopen($path . $name, 'r'), [
+                'name' => $objectName,
+            ]);
+
+            // Upload the thumbnail to GCS
+            $bucket->upload(fopen($path . $onlyName . '_thumb.' . $onlyExtension, 'r'), [
+                'name' => $thumbnailObjectName,
+            ]);
+
+            // Delete the local temporary files
+            unlink($path . $name);
+            unlink($path . $onlyName . '_thumb.' . $onlyExtension);
+
+            // Set image URLs as the final result
+            // $image = $imageUrl;
+            $image = $thumbnailObjectName;
+        } else {
+            $image = ''; // or any other appropriate handling
         }
-        else
-        {
-            $image = '';
-        }
+
 
         //table data
         $data = [
@@ -226,15 +250,12 @@ class Post extends BaseController
 
         //check if inserted
         $alert = [];
-        if($this->db->affectedRows() > 0)
-        {
+        if ($this->db->affectedRows() > 0) {
             $alert = [
                 'type'      => 'success',
                 'message'   => 'Berhasil menyimpan artikel baru.'
             ];
-        }
-        else
-        {
+        } else {
             $alert = [
                 'type'      => 'danger',
                 'message'   => 'Gagal menyimpan artikel baru!'
@@ -248,14 +269,14 @@ class Post extends BaseController
     public function edit()
     {
         //always check authentication
-        if(!session()->ID) return redirect()->to('login');
+        if (!session()->ID) return redirect()->to('login');
 
         $id = $this->request->getGet('id');
         //retrieve post data
         $builder = $this->db->table('post');
         $builder->where('ID', $id);
         $result = $builder->get()->getRow();
-        if(!$result) return redirect()->to('post');
+        if (!$result) return redirect()->to('post');
         $this->data['post'] = $result;
 
         //retrieve category data
@@ -281,7 +302,7 @@ class Post extends BaseController
     public function update()
     {
         //always check authentication
-        if(!session()->ID) return redirect()->to('login');
+        if (!session()->ID) return redirect()->to('login');
 
         //get post form data
         $id             = $this->request->getPost('id');
@@ -291,19 +312,16 @@ class Post extends BaseController
         $category       = $this->request->getPost('category');
         $tags           = $this->request->getPost('tags');
         $author         = $this->request->getPost('author');
-        $date_created   = $this->request->getPost('date').date(' H:i:s', now());
+        $date_created   = $this->request->getPost('date') . date(' H:i:s', now());
         $last_modified  = date('Y-m-d H:i:s', now());
         $status         = ($this->request->getPost('publish-now')) ? '1' : '0';
         $image_old      = $this->request->getPost('image-old');
         $image          = $this->request->getFile('image');
 
         //processing multiple categories
-        if($category)
-        {
+        if ($category) {
             $category = implode(',', $category);
-        }
-        else
-        {
+        } else {
             $category = '1';
         }
 
@@ -311,27 +329,55 @@ class Post extends BaseController
         $name           = '';
         $onlyName       = '';
         $onlyExtension  = '';
-        $path = ROOTPATH.'public/upload/img/';
-        if($image->isValid() && !$image->hasMoved())
-        {
+        $path = ROOTPATH . 'public/upload/img/';
+        if ($image->isValid() && !$image->hasMoved()) {
+            // Generate a random name for the image
             $name = $image->getRandomName();
+
+            // Move the image to the specified path with the generated name
             $image->move($path, $name);
 
-            $namE           = explode('.', $name);
-            $onlyName       = $namE[0];
-            $onlyExtension  = $namE[1];
+            // Extract the name and extension of the image file
+            $nameParts = pathinfo($name);
+            $onlyName = $nameParts['filename'];
+            $onlyExtension = $nameParts['extension'];
 
-            //resizing image
+            // Resize the image and save it as a thumbnail
             $thumbnail = \Config\Services::image();
-            $thumbnail->withFile($path.$name)
+            $thumbnail->withFile($path . $name)
                 ->resize(350, 350, true, 'width')
-                ->save($path.$onlyName.'_thumb.'.$onlyExtension);
+                ->save($path . $onlyName . '_thumb.' . $onlyExtension);
 
-            //set image url
-            $image = base_url('upload/img/'.$onlyName.'_thumb.'.$onlyExtension);
-        }
-        else
-        {
+            // Initialize Google Cloud Storage client
+            $storage = new StorageClient([
+                'keyFilePath' => ROOTPATH . 'public/service-account-key.json',
+                'projectId' => 'diskominfo-wonosobo',
+            ]);
+
+            // Specify the bucket and file names in GCS
+            $bucketName = 'dikpora';
+            $objectName = 'upload/img/' . $name;
+            $thumbnailObjectName = 'upload/img/' . $onlyName . '_thumb.' . $onlyExtension;
+
+            // Upload the original image to GCS
+            $bucket = $storage->bucket($bucketName);
+            $bucket->upload(fopen($path . $name, 'r'), [
+                'name' => $objectName,
+            ]);
+
+            // Upload the thumbnail to GCS
+            $bucket->upload(fopen($path . $onlyName . '_thumb.' . $onlyExtension, 'r'), [
+                'name' => $thumbnailObjectName,
+            ]);
+
+            // Delete the local temporary files
+            unlink($path . $name);
+            unlink($path . $onlyName . '_thumb.' . $onlyExtension);
+
+            // Set image URLs as the final result
+            // $image = $imageUrl;
+            $image = $thumbnailObjectName;
+        } else {
             $image = $image_old;
         }
 
@@ -356,15 +402,12 @@ class Post extends BaseController
 
         //check if inserted
         $alert = [];
-        if($this->db->affectedRows() > 0)
-        {
+        if ($this->db->affectedRows() > 0) {
             $alert = [
                 'type'      => 'success',
                 'message'   => 'Berhasil memperbaharui artikel.'
             ];
-        }
-        else
-        {
+        } else {
             $alert = [
                 'type'      => 'danger',
                 'message'   => 'Gagal memperbaharui artikel!'
@@ -386,15 +429,12 @@ class Post extends BaseController
         $builder->update();
 
         $stat = ($status === '0') ? 'menghapus' : 'merestore';
-        if($this->db->affectedRows() > 0)
-        {
+        if ($this->db->affectedRows() > 0) {
             session()->setFlashdata('alert', [
                 'type'      => 'success',
                 'message'   => "Berhasil {$stat} postingan yang dipilih.",
             ]);
-        }
-        else
-        {
+        } else {
             session()->setFlashdata('alert', [
                 'type'      => 'danger',
                 'message'   => "Gagal {$stat} postingan yang dipilih!",
@@ -409,10 +449,10 @@ class Post extends BaseController
         //retrieve post data
         $builder = $this->db->table('post');
         $builder->where('slug', $slug);
-	$builder->where('status', '1');
+        $builder->where('status', '1');
         $result = $builder->get()->getRow();
         //redirect to search if not found
-        if(!$result) return redirect()->to('https://www.google.com/search?q='.urlencode(str_replace('-',' ', $slug.' dpupr wonosobo')));
+        if (!$result) return redirect()->to('https://www.google.com/search?q=' . urlencode(str_replace('-', ' ', $slug . ' dikpora wonosobo')));
         $this->data['article'] = $result;
 
         //get comments
@@ -484,21 +524,19 @@ class Post extends BaseController
         $builder = $this->db->table('category');
         $builder->where('ID', $ID_category);
         $result = $builder->get()->getRow();
-        if($result) $Cat = 'Arsip: '.$result->name;
+        if ($result) $Cat = 'Arsip: ' . $result->name;
 
         //retrieve ID_category
         $builder->resetQuery();
         $builder = $this->db->table('post');
-        if($ID_category)
-        {
+        if ($ID_category) {
             //retrieve all ID_category
             $builder->select('ID,ID_category');
-	    $builder->where('status', '1');
+            $builder->where('status', '1');
             $result = $builder->get()->getResult();
-            foreach($result as $res)
-            {
+            foreach ($result as $res) {
                 $ID_cats = explode(',', $res->ID_category);
-                if(in_array($ID_category, $ID_cats)) $IDs[] = $res->ID;
+                if (in_array($ID_category, $ID_cats)) $IDs[] = $res->ID;
             }
         }
 
@@ -506,15 +544,14 @@ class Post extends BaseController
         $builder->resetQuery();
         $builder->selectCount('ID');
         $builder->where('status', '1');
-        if($keywords)
-        {
+        if ($keywords) {
             $builder->groupStart()
                 ->like('title', $keywords)
                 ->orLike('content', $keywords)
                 ->orLike('tags', $keywords)
                 ->groupEnd();
         }
-        if($ID_category) $builder->whereIn('ID', $IDs);
+        if ($ID_category) $builder->whereIn('ID', $IDs);
         $result = $builder->get()->getRow();
 
         //pagination
@@ -525,15 +562,14 @@ class Post extends BaseController
         // Call makeLinks() to make pagination links.
         $pager_links = $pager->makeLinks($page, $perPage, $total);
         $this->data['pager']        = $pager_links;
-        $this->data['pagerStart']   = ($page-1)*$perPage;
+        $this->data['pagerStart']   = ($page - 1) * $perPage;
 
         //reset query with pagination
         $builder->resetQuery();
         $builder->select('title,slug,featured_image,date_created');
         $builder->where('status', '1');
-        if($ID_category) $builder->whereIn('ID', $IDs);
-        if($keywords)
-        {
+        if ($ID_category) $builder->whereIn('ID', $IDs);
+        if ($keywords) {
             $builder->groupStart()
                 ->like('title', $keywords)
                 ->orLike('content', $keywords)
@@ -541,7 +577,7 @@ class Post extends BaseController
                 ->groupEnd();
         }
         $builder->orderBy('date_created', 'DESC');
-        if($page) $builder->limit($perPage, $this->data['pagerStart']);
+        if ($page) $builder->limit($perPage, $this->data['pagerStart']);
         $result = $builder->get()->getResult();
         $this->data['posts'] = $result;
 
@@ -599,8 +635,7 @@ class Post extends BaseController
         $builder = $this->db->table('post');
         $builder->selectCount('ID');
         $builder->where('status', '1');
-        if($keywords)
-        {
+        if ($keywords) {
             $builder->groupStart()
                 ->like('title', $keywords)
                 ->orLike('content', $keywords)
@@ -617,14 +652,13 @@ class Post extends BaseController
         // Call makeLinks() to make pagination links.
         $pager_links = $pager->makeLinks($page, $perPage, $total);
         $this->data['pager']        = $pager_links;
-        $this->data['pagerStart']   = ($page-1)*$perPage;
+        $this->data['pagerStart']   = ($page - 1) * $perPage;
 
         //reset query with pagination
         $builder->resetQuery();
         $builder->select('title,slug,featured_image,date_created');
         $builder->where('status', '1');
-        if($keywords)
-        {
+        if ($keywords) {
             $builder->groupStart()
                 ->like('title', $keywords)
                 ->orLike('content', $keywords)
@@ -632,14 +666,14 @@ class Post extends BaseController
                 ->groupEnd();
         }
         $builder->orderBy('date_created', 'DESC');
-        if($page) $builder->limit($perPage, $this->data['pagerStart']);
+        if ($page) $builder->limit($perPage, $this->data['pagerStart']);
         $result = $builder->get()->getResult();
         $this->data['posts'] = $result;
 
         //3 new article
         $builder->resetQuery();
         $builder->select('title,slug,featured_image,date_created');
-	$builder->where('status', '1');
+        $builder->where('status', '1');
         $builder->orderBy('date_created', 'DESC');
         $builder->limit(3);
         $results = $builder->get()->getResult();
@@ -647,9 +681,9 @@ class Post extends BaseController
 
         //acting like article attr
         $obj = new \stdClass();
-        $obj->title     = 'Pencarian: '.$keywords;
-        $obj->slugs     = url_title(strtolower('Pencarian: '.$keywords), '-');
-        $obj->content   = 'Pencarian: '.$keywords;
+        $obj->title     = 'Pencarian: ' . $keywords;
+        $obj->slugs     = url_title(strtolower('Pencarian: ' . $keywords), '-');
+        $obj->content   = 'Pencarian: ' . $keywords;
         $obj->tags      = 'pencarian, cari, telusur, telusuri berita';
         $this->data['article'] = $obj;
 
@@ -681,5 +715,4 @@ class Post extends BaseController
         echo view('archive');
         echo view('footer');
     }
-
 }

@@ -3,7 +3,7 @@
         Dokumen <?php echo ucfirst(@$_GET['category']); ?>&nbsp;
         <a href="#" class="a-normal" data-bs-toggle="modal" data-bs-target="#modal-new">+</a>
     </h3>
-    <?php if(session()->alert): ?>
+    <?php if (session()->alert) : ?>
         <div class="alert alert-<?php echo session()->alert['type']; ?>">
             <?php echo session()->alert['message']; ?>
         </div>
@@ -13,31 +13,31 @@
         <form method="get">
             <div class="row mb-2 gx-1">
                 <?php $kolom = 12; ?>
-                <?php if($category == 'transparansi'): ?>
-                <div class="col-lg-3">
-                    <input type="hidden" name="category" value="<?php echo $category; ?>">
-                    <select name="sub-category" class="form-select" onchange="this.form.submit()">
-                        <option value="0">Jenis</option>
-                        <?php
-                            foreach($subcategory as $subc):
+                <?php if ($category == 'transparansi') : ?>
+                    <div class="col-lg-3">
+                        <input type="hidden" name="category" value="<?php echo $category; ?>">
+                        <select name="sub-category" class="form-select" onchange="this.form.submit()">
+                            <option value="0">Jenis</option>
+                            <?php
+                            foreach ($subcategory as $subc) :
                                 $selected = (@$_GET['sub-category'] == $subc['slug']) ? ' selected="selected"' : '';
-                                echo '<option value="'.$subc['slug'].'"'.$selected.'>'.$subc['title'].'</option>';
+                                echo '<option value="' . $subc['slug'] . '"' . $selected . '>' . $subc['title'] . '</option>';
                             endforeach;
-                        ?>
-                    </select>
-                </div>
-                <div class="col-lg-3">
-                    <select name="fiscal" class="form-select" onchange="this.form.submit()">
-                        <option value="0">Tahun</option>
-                        <?php
-                        foreach($fiscal as $fisc):
-                            $selected = (@$_GET['fiscal'] == $fisc->fiscal) ? ' selected="selected"' : '';
-                            echo '<option value="'.$fisc->fiscal.'"'.$selected.'>'.$fisc->fiscal.'</option>';
-                        endforeach;
-                        ?>
-                    </select>
-                </div>
-                <?php $kolom = 6; ?>
+                            ?>
+                        </select>
+                    </div>
+                    <div class="col-lg-3">
+                        <select name="fiscal" class="form-select" onchange="this.form.submit()">
+                            <option value="0">Tahun</option>
+                            <?php
+                            foreach ($fiscal as $fisc) :
+                                $selected = (@$_GET['fiscal'] == $fisc->fiscal) ? ' selected="selected"' : '';
+                                echo '<option value="' . $fisc->fiscal . '"' . $selected . '>' . $fisc->fiscal . '</option>';
+                            endforeach;
+                            ?>
+                        </select>
+                    </div>
+                    <?php $kolom = 6; ?>
                 <?php endif; ?>
                 <div class="col-lg-<?php echo $kolom; ?>">
                     <div class="input-group">
@@ -63,9 +63,9 @@
                             <?php $Status = (@$_GET['status'] === '0') ? '0' : '1'; ?>
                             <?php $status = (@$_GET['status'] === '0') ? '1' : '0'; ?>
                             <a href="<?php echo base_url("document/new?category={$category}&status={$status}"); ?>" class="text-light">
-                                <?php if($Status === '0'): ?>
+                                <?php if ($Status === '0') : ?>
                                     <i class="bi bi-reply-all-fill"></i>
-                                <?php else: ?>
+                                <?php else : ?>
                                     <i class="bi bi-trash"></i>
                                 <?php endif; ?>
                             </a>
@@ -73,46 +73,46 @@
                     </tr>
                 </thead>
                 <tbody>
-                <?php if(!$document): ?>
-                    <tr>
-                        <td colspan="4" class="p-2 text-center text-danger fw-bold fst-italic">
-                            ... dokumen tidak ditemukan!
-                        </td>
-                    </tr>
-                <?php endif; ?>
-                <?php $i = $pagerStart+1; ?>
-                <?php foreach($document as $doc): ?>
-                    <tr>
-                        <td class="text-center"><?php echo $i; ?>.</td>
-                        <td><?php echo $doc->title; ?></td>
-                        <td><small><em><?php echo $doc->description; ?></em></small></td>
-                        <td class="text-center">
-                            <small>
-                                <a href="<?php echo $doc->url; ?>" class="d-block px-1 text-center text-light bg-success a-normal rounded">
-                                    <i class="bi bi-download"></i>
+                    <?php if (!$document) : ?>
+                        <tr>
+                            <td colspan="4" class="p-2 text-center text-danger fw-bold fst-italic">
+                                ... dokumen tidak ditemukan!
+                            </td>
+                        </tr>
+                    <?php endif; ?>
+                    <?php $i = $pagerStart + 1; ?>
+                    <?php foreach ($document as $doc) : ?>
+                        <tr>
+                            <td class="text-center"><?php echo $i; ?>.</td>
+                            <td><?php echo $doc->title; ?></td>
+                            <td><small><em><?php echo $doc->description; ?></em></small></td>
+                            <td class="text-center">
+                                <small>
+                                    <a target="_blank" href="<?= coba($doc->url); ?>" class="d-block px-1 text-center text-light bg-success a-normal rounded">
+                                        <i class="bi bi-download"></i>
+                                    </a>
+                                </small>
+                            </td>
+                            <td class="text-center">
+                                <small><?php echo date('d/m/Y', strtotime($doc->date_uploaded)); ?></small>
+                            </td>
+                            <td class="text-center">
+                                <a href="<?php echo base_url('document/edit-status?id=' . $doc->ID . '&status=' . $status); ?>" onclick="return confirm('Apakah Anda yakin?')">
+                                    <?php if ($Status === '0') : ?>
+                                        <i class="bi bi-reply-all-fill text-success"></i>
+                                    <?php else : ?>
+                                        <i class="bi bi-trash text-danger"></i>
+                                    <?php endif; ?>
                                 </a>
-                            </small>
-                        </td>
-                        <td class="text-center">
-                            <small><?php echo date('d/m/Y', strtotime($doc->date_uploaded)); ?></small>
-                        </td>
-                        <td class="text-center">
-                            <a href="<?php echo base_url('document/edit-status?id='.$doc->ID.'&status='.$status); ?>" onclick="return confirm('Apakah Anda yakin?')">
-                                <?php if($Status === '0'): ?>
-                                    <i class="bi bi-reply-all-fill text-success"></i>
-                                <?php else: ?>
-                                    <i class="bi bi-trash text-danger"></i>
-                                <?php endif; ?>
-                            </a>
-                        </td>
-                    </tr>
-                    <?php $i++; ?>
-                <?php endforeach; ?>
+                            </td>
+                        </tr>
+                        <?php $i++; ?>
+                    <?php endforeach; ?>
                 </tbody>
             </table>
         </div>
         <div class="">
-            <?php echo $pager = str_replace(['<ul class="pagination"','<li>','<a'],['<ul class="pagination pagination-sm"','<li class="page-item">','<a class="page-link"'],$pager); ?>
+            <?php echo $pager = str_replace(['<ul class="pagination"', '<li>', '<a'], ['<ul class="pagination pagination-sm"', '<li class="page-item">', '<a class="page-link"'], $pager); ?>
         </div>
     </article>
 
@@ -129,19 +129,19 @@
                         </div>
                     </h5>
                     <form method="post" action="<?php echo base_url(); ?>/document/add-new" enctype="multipart/form-data">
-                        <?php if(strtolower(@$_GET['category']) == 'transparansi'): ?>
+                        <?php if (strtolower(@$_GET['category']) == 'transparansi') : ?>
                             <input type="hidden" name="category" value="transparansi">
                             <div class="input-group mb-2">
                                 <select id="subCategoryDynamic" name="sub-category" class="form-select">
                                     <?php
-                                        foreach($subcategory as $subc):
-                                            echo '<option value="'.$subc['slug'].'">'.$subc['title'].'</option>';
-                                        endforeach;
+                                    foreach ($subcategory as $subc) :
+                                        echo '<option value="' . $subc['slug'] . '">' . $subc['title'] . '</option>';
+                                    endforeach;
                                     ?>
                                 </select>
                                 <input type="text" name="fiscal" class="form-control" maxlength="35" placeholder="Tahun Anggaran">
                             </div>
-                        <?php else: ?>
+                        <?php else : ?>
                             <input type="hidden" name="category" value="umum">
                             <input type="hidden" name="sub-category" value="lainnya">
                             <input type="hidden" name="fiscal" value="">
@@ -166,8 +166,8 @@
                     </form>
                 </div>
             </div>
-        </div>
     </div>
+</div>
 </div>
 
 <div id="modalJenisTransparansi" class="modal fade">

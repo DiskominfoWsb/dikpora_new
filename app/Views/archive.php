@@ -55,7 +55,7 @@
                         <div class="col-lg-6 col-md-6 col-sm-12 col-xs-12 col-12 my-2 gx-3">
                             <table style="box-shadow: 0 0 3px 0 #ccc; border-radius: .2rem;">
                                 <tr style="background: #fff;">
-                                    <td style="width: 100px; height: 100px; background-image: url('<?php echo $post->featured_image; ?>'); background-size: cover; border-top-left-radius: .2rem; border-bottom-left-radius: .2rem;"></td>
+                                    <td style="width: 100px; height: 100px; background-image: url('<?php echo coba($post->featured_image); ?>'); background-size: cover; border-top-left-radius: .2rem; border-bottom-left-radius: .2rem;"></td>
                                     <td class="px-2 py-1 align-top" style="border-top-right-radius: .2rem; border-bottom-right-radius: .2rem;">
                                         <a href="<?php echo base_url('artikel/'.$post->slug); ?>" title="<?php echo $post->title; ?>" class="d-block a-normal">
                                             <?php echo substr($post->title,0,60); ?> ...

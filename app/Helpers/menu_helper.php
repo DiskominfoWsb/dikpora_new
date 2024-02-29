@@ -150,7 +150,7 @@ function getMenuNewTree($textColor = 'text-light', $db)
 
 function getMenuNewNav($db)
 {
-    $menuOutput  = '';
+    $menuOutput  = 'coba';
     $menuNewTree = json_decode(getOption('menu_new_tree', $db), true);
     if(is_array($menuNewTree) && $menuNewTree['menuID'])
     {

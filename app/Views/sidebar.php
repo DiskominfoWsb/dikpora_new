@@ -7,7 +7,7 @@
             <?php foreach($featured as $fear): ?>
                 <div class="sidebar-body mb-3 cursor-pointer">
                     <a href="<?php echo base_url('artikel/'.$fear->slug); ?>" class="d-block a-normal text-dark">
-                        <div class="sidebar-image d-block bg-info" style="background-image: url('<?php echo $fear->featured_image; ?>'); background-size: cover; background-position: center top;">
+                        <div class="sidebar-image d-block bg-info" style="background-image: url('<?php echo coba($fear->featured_image); ?>'); background-size: cover; background-position: center top;">
                             &nbsp;
                         </div>
                         <div class="sidebar-title py-1 px-3">
