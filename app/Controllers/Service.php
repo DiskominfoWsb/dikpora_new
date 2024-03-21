@@ -36,7 +36,7 @@ class Service extends BaseController
         //new menu tree
         $this->data['menuNewTree1']  = getMenuNewTree('text-light', $this->db);
         //$this->data['menuNewTree2']  = getMenuNewTree('text-light', $this->db);
-        
+
         $this->path = ROOTPATH . 'public/upload';
         $this->url  = base_url('upload');
     }
@@ -309,8 +309,8 @@ class Service extends BaseController
         $ext    = $file->getClientExtension();
         if (in_array($ext, $allowedExtension)) {
             if ($file->isValid() && !$file->hasMoved()) {
-                $name   = $this->uploadToGCS($file, 'upload/img');
-                $attachment = site_url('upload/view?file=' . $name);
+                $oke   = $this->uploadToGCS($file, 'upload/img');
+                $attachment = site_url('upload/view?file=' . $oke);
             }
         }
 
