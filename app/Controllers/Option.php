@@ -2,16 +2,19 @@
 
 namespace App\Controllers;
 
+use Google\Cloud\Storage\StorageClient;
+
 class Option extends BaseController
 {
     protected $data = [];
+    protected $path;
 
     public function __construct()
     {
         $this->db = \Config\Database::connect();
         helper([
             'date', 'my_date', 'text', 'security', 'page',
-            'option','menu','category','service', 'comment',
+            'option', 'menu', 'category', 'service', 'comment',
         ]);
 
         $this->data['controller'] = 'option';
@@ -48,12 +51,14 @@ class Option extends BaseController
             'email'     => getOption('contact_email', $this->db),
             'website'   => getOption('contact_website', $this->db),
         ];
+
+        $this->path = ROOTPATH . 'public/upload';
     }
 
     public function index()
     {
         //always check authentication
-        if(!session()->ID) return redirect()->to('login');
+        if (!session()->ID) return redirect()->to('login');
 
         //halaman statis yang tersedia
         $this->data['halamanStatis'] = [
@@ -108,27 +113,24 @@ class Option extends BaseController
     public function save()
     {
         //always check authentication
-        if(!session()->ID) return redirect()->to('login');
+        if (!session()->ID) return redirect()->to('login');
 
         //count updated data
         $update = $updated = 0;
 
         //get post data file
-        $allowedExtension   = ['jpg','jpeg','png'];
+        $allowedExtension   = ['jpg', 'jpeg', 'png'];
 
         //popup welcome
         $bannerWelcome   = $this->request->getFile('fileBannerWelcome');
-        if($bannerWelcome->isValid() && !$bannerWelcome->hasMoved())
-        {
+        if ($bannerWelcome->isValid() && !$bannerWelcome->hasMoved()) {
             $extension = $bannerWelcome->guessExtension();
-            if(in_array($extension, $allowedExtension))
-            {
-                $name   = $bannerWelcome->getRandomName();
-                $bannerWelcome->move(ROOTPATH.'public/upload/img', $name);
+            if (in_array($extension, $allowedExtension)) {
+                $name   = $this->uploadToGCS($bannerWelcome, 'upload/img');
                 $update = updateOption('banner_welcome', serialize([
                     'id'    => 'bannerWelcome',
                     'title' => 'Selamat Datang',
-                    'image' =>  base_url('upload/img/'.$name),
+                    'image' =>  site_url('upload/view?file=' . $name),
                 ]), $this->db);
             }
         }
@@ -136,17 +138,14 @@ class Option extends BaseController
 
         //banner pengumuman maklumat dsb
         $bannerPengumuman   = $this->request->getFile('fileBannerPengumuman');
-        if($bannerPengumuman->isValid() && !$bannerPengumuman->hasMoved())
-        {
+        if ($bannerPengumuman->isValid() && !$bannerPengumuman->hasMoved()) {
             $extension = $bannerPengumuman->guessExtension();
-            if(in_array($extension, $allowedExtension))
-            {
-                $name   = $bannerPengumuman->getRandomName();
-                $bannerPengumuman->move(ROOTPATH.'public/upload/img', $name);
+            if (in_array($extension, $allowedExtension)) {
+                $name   = $this->uploadToGCS($bannerPengumuman, 'upload/img');
                 $update = updateOption('banner_pengumuman', serialize([
                     'id'    => 'bannerPengumuman',
                     'title' => 'Maklumat Pelayanan',
-                    'image' =>  base_url('upload/img/'.$name),
+                    'image' =>  site_url('upload/view?file=' . $name),
                 ]), $this->db);
             }
         }
@@ -157,22 +156,17 @@ class Option extends BaseController
         $iconToolTitle  = $this->request->getPost('iconToolTitle');
         $iconToolUrl    = $this->request->getPost('iconToolUrl');
         $icon_tools     = json_decode(getOption('icon_tools', $this->db), true);
-        for($i=0; $i<2; $i++)
-        {
-            for($j=0; $j<6; $j++)
-            {
+        for ($i = 0; $i < 2; $i++) {
+            for ($j = 0; $j < 6; $j++) {
                 $icon_tools[$i][$j][1]  = $iconToolTitle[$i][$j];
                 $icon_tools[$i][$j][2]  = $iconToolUrl[$i][$j];
                 //upload jika image dipilih
-                $iconToolImage = $this->request->getFile('iconToolImage.'.$i.'.'.$j);
-                if($iconToolImage)
-                {
-                    if($iconToolImage->isValid() && !$iconToolImage->hasMoved())
-                    {
+                $iconToolImage = $this->request->getFile('iconToolImage.' . $i . '.' . $j);
+                if ($iconToolImage) {
+                    if ($iconToolImage->isValid() && !$iconToolImage->hasMoved()) {
                         $name       = $iconToolImage->getRandomName();
                         $extension  = $iconToolImage->guessExtension();
-                        if(in_array($extension, $allowedExtension))
-                        {
+                        if (in_array($extension, $allowedExtension)) {
                             $iconToolImage->move(ROOTPATH . 'public/assets/icon-tool', $name);
                             $icon_tools[$i][$j][0]  = $name;
                         }
@@ -190,8 +184,7 @@ class Option extends BaseController
         $content    = $this->request->getPost('modalToolsContent');
 
         $data = [];
-        for($i=0; $i<count($id); $i++)
-        {
+        for ($i = 0; $i < count($id); $i++) {
             $data[$i] = [
                 'id'        => $id[$i],
                 'icon'      => $icon[$i],
@@ -216,8 +209,7 @@ class Option extends BaseController
         $linkTitle  = $this->request->getPost('exLinkTitle');
         $linkUrl    = $this->request->getPost('exLinkUrl');
         $exLinks    = [];
-        for($i=0; $i<count($linkTitle); $i++)
-        {
+        for ($i = 0; $i < count($linkTitle); $i++) {
             $exLinks[$i] = [
                 'title' => $linkTitle[$i],
                 'url'   => $linkUrl[$i],
@@ -250,20 +242,17 @@ class Option extends BaseController
             'menuTitle' => $menuTitle,
             'menuURL'   => $menuURL,
         ];
-        if($menuIDs) $updated += updateOption('menu_new_tree', json_encode($menuNew), $this->db);
+        if ($menuIDs) $updated += updateOption('menu_new_tree', json_encode($menuNew), $this->db);
 
         /** End menu */
 
         //alert and redirect
-        if($updated > 0)
-        {
+        if ($updated > 0) {
             session()->setFlashdata('alert', [
                 'type'      => 'success',
-                'message'   => 'Berhasil menyimpan perubahan '.$updated.' data.'
+                'message'   => 'Berhasil menyimpan perubahan ' . $updated . ' data.'
             ]);
-        }
-        else
-        {
+        } else {
             session()->setFlashdata('alert', [
                 'type'      => 'warning',
                 'message'   => 'Tidak ada perubahan data yang disimpan!'
@@ -272,4 +261,40 @@ class Option extends BaseController
         return redirect()->to('option');
     }
 
+
+    // Upload file to Google Cloud Storage and delete local copy
+    protected function uploadToGCS($file, $folder)
+    {
+        // Generate a random name for the file
+        $name = $file->getRandomName();
+
+        // Move the file to the specified path with the generated name
+        $file->move($this->path . $folder, $name);
+
+        // Initialize Google Cloud Storage client
+        $storage = new StorageClient([
+            'keyFilePath' => ROOTPATH . 'public/service-account-key.json',
+            'projectId' => 'diskominfo-wonosobo',
+        ]);
+
+        // Specify your GCS bucket
+        $bucket = $storage->bucket('dikpora');
+
+        // Specify the file path in GCS
+        $objectName = $folder . '/' . $name;
+
+        // Upload the file to GCS
+        $bucket->upload(
+            fopen($this->path . $objectName, 'r'),
+            [
+                'name' => $objectName
+            ]
+        );
+
+        // Delete the local copy
+        unlink($this->path . $objectName);
+
+        // Return the GCS file path
+        return $objectName;
+    }
 }

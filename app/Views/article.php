@@ -63,7 +63,7 @@
                 </div>
                 <?php if ($article->featured_image) : ?>
                     <div id="featured-image" class="pt-3 pb-1">
-                        <img src="<?php echo coba(str_replace('_thumb', '', $article->featured_image)); ?>" style="width: 100%;">
+                        <img src="<?php echo site_url('upload/view?file=' . str_replace('_thumb', '', $article->featured_image)); ?>" style="width: 100%;">
                     </div>
                 <?php endif; ?>
                 <article class="py-4 px-3 px-sm-3 px-md-4 px-lg-4">

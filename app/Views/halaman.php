@@ -8,7 +8,8 @@
                         (function(d, s, id) {
                             var js, fjs = d.getElementsByTagName(s)[0];
                             if (d.getElementById(id)) return;
-                            js = d.createElement(s); js.id = id;
+                            js = d.createElement(s);
+                            js.id = id;
                             js.src = "https://connect.facebook.net/en_US/sdk.js#xfbml=1&version=v3.0";
                             fjs.parentNode.insertBefore(js, fjs);
                         }(document, 'script', 'facebook-jssdk'));
@@ -30,7 +31,8 @@
                             };
 
                             return t;
-                        }(document, "script", "twitter-wjs"));</script>
+                        }(document, "script", "twitter-wjs"));
+                    </script>
                     <a class="twitter-share-button" href="https://twitter.com/intent/tweet"></a>&nbsp;
                     <a href="whatsapp://send?text=<?php echo urlencode(current_url()); ?>" class="d-inline-block a-normal cursor-pointer text-light rounded-pill bg-success" style="height: 20px; font-size: 9pt; padding: 1px 10px 1px 7px; cursor: pointer;">
                         <i class="bi bi-whatsapp"></i> Share
@@ -41,27 +43,27 @@
                     <p class="m-0">
                         <small>
                             <?php
-                                $time   = strtotime($article->date_created);
-                                $day    = array_hari(date('D', $time));
-                                $date   = date('d', $time);
-                                $month  = array_bulan(date('m', $time));
-                                $year   = date('Y', $time);
+                            $time   = strtotime($article->date_created);
+                            $day    = array_hari(date('D', $time));
+                            $date   = date('d', $time);
+                            $month  = array_bulan(date('m', $time));
+                            $year   = date('Y', $time);
                             ?>
-                            <i class="bi bi-clock"></i> <?php echo "{$day}, {$date} {$month} {$year}";?><br>
+                            <i class="bi bi-clock"></i> <?php echo "{$day}, {$date} {$month} {$year}"; ?><br>
                         </small>
                     </p>
                 </div>
-                <?php if($article->featured_image): ?>
-                <div id="featured-image" class="pt-3 pb-1">
-                    <img src="<?php echo coba(str_replace('_thumb', '', $article->featured_image)); ?>" style="width: 100%;">
-                </div>
+                <?php if ($article->featured_image) : ?>
+                    <div id="featured-image" class="pt-3 pb-1">
+                        <img src="<?php echo site_url('upload/view?file=' . str_replace('_thumb', '', $article->featured_image)); ?>" style="width: 100%;">
+                    </div>
                 <?php endif; ?>
                 <article class="py-4 px-4">
                     <?php echo $article->content; ?>
                 </article>
             </div>
-            <?php if(isset($attachComment)): ?>
-                <?php if($attachComment): ?>
+            <?php if (isset($attachComment)) : ?>
+                <?php if ($attachComment) : ?>
                     <div class="col-12">
                         <?php echo $this->include('comment-form'); ?>
                     </div>

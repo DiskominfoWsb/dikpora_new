@@ -39,6 +39,7 @@ $routes->get('/home', 'Home::index');
 $routes->get('/', 'Home::index');
 
 $routes->get('/login', 'Login::index');
+$routes->get('/coba', 'Coba::index');
 $routes->get('/authentication/logout', 'Authentication::logout');
 $routes->post('/authentication/login', 'Authentication::login');
 
@@ -79,6 +80,7 @@ $routes->post('/comment/reply', 'Comment::reply');
 
 $routes->post('/upload/image-file-editor/(:any)', 'Upload::imageFileEditor/$1');
 $routes->post('/upload/image-file-featured/(:any)', 'Upload::imageFileFeatured/$1');
+$routes->get('upload/view', 'Upload::view');
 
 //post artikel berita, pengumuman
 $routes->get('/artikel/arsip/(:any)', 'Post::archive/$1'); //by ID_category

@@ -156,7 +156,7 @@
                                     <a href="<?php echo base_url('artikel/' . $newsletter[(3 * $i) + 0]['slug']); ?>" class="d-block a-normal text-darken a-link" title="<?php echo $newsletter[(3 * $i) + 0]['title']; ?>">
                                         <div class="inner-group d-block bg-warning-op-85">
                                             <?php if (!$newsletter[(3 * $i) + 0]['featured_image']) $newsletter[(3 * $i) + 0]['featured_image'] = 'https://www.google.com/images/branding/googlelogo/1x/googlelogo_color_272x92dp.png'; ?>
-                                            <div class="d-flex container featured-image" style="background-image: url('<?php echo coba($newsletter[(3 * $i) + 0]['featured_image']); ?>'); background-size: cover; background-position: center top; height: 250px;">
+                                            <div class="d-flex container featured-image" style="background-image: url('<?php echo site_url('upload/view?file=' . $newsletter[(3 * $i) + 0]['featured_image']); ?>'); background-size: cover; background-position: center top; height: 250px;">
                                                 <div class="row align-items-end">
                                                     <div class="featured-title d-block">
                                                         <p class="fw-bolder m-0 pt-2 pb-1">
@@ -175,7 +175,7 @@
                                 <div class="carousel-col col-lg-4 ps-3 pe-3">
                                     <a href="<?php echo base_url('artikel/' . $newsletter[(3 * $i) + 1]['slug']); ?>" class="d-block a-normal text-darken a-link" title="<?php echo $newsletter[(3 * $i) + 1]['title']; ?>">
                                         <div class="inner-group d-block bg-warning-op-85 cursor-pointer">
-                                            <div class="d-flex container featured-image" style="background-image: url('<?php echo  coba($newsletter[(3 * $i) + 1]['featured_image']); ?>'); background-size: cover; background-position: center top; height: 250px;">
+                                            <div class="d-flex container featured-image" style="background-image: url('<?php echo  site_url('upload/view?file=' . $newsletter[(3 * $i) + 1]['featured_image']); ?>'); background-size: cover; background-position: center top; height: 250px;">
                                                 <div class="row align-items-end">
                                                     <div class="featured-title">
                                                         <p class="fw-bolder m-0 pt-2 pb-1">
@@ -194,7 +194,7 @@
                                 <div class="carousel-col col-lg-4 pe-5">
                                     <a href="<?php echo base_url('artikel/' . $newsletter[(3 * $i) + 2]['slug']); ?>" class="d-block a-normal text-darken a-link" title="<?php echo $newsletter[(3 * $i) + 2]['title']; ?>">
                                         <div class="inner-group d-block bg-warning-op-85 cursor-pointer">
-                                            <div class="d-flex container featured-image" style="background-image: url('<?php echo  coba($newsletter[(3 * $i) + 2]['featured_image']); ?>'); background-size: cover; background-position: center top; height: 250px;">
+                                            <div class="d-flex container featured-image" style="background-image: url('<?php echo  site_url('upload/view?file=' . $newsletter[(3 * $i) + 2]['featured_image']); ?>'); background-size: cover; background-position: center top; height: 250px;">
                                                 <div class="row align-items-end">
                                                     <div class="featured-title">
                                                         <p class="fw-bolder m-0 pt-2 pb-1">
@@ -253,7 +253,7 @@
                                 <div class="carousel-col col-lg-4 ps-5">
                                     <a href="<?php echo base_url('artikel/' . $announcement[(3 * $i) + 0]['slug']); ?>" class="d-block a-normal text-darken a-link" title="<?php echo $announcement[(3 * $i) + 0]['title']; ?>">
                                         <div class="inner-group d-block bg-warning-op-85">
-                                            <div class="d-flex container featured-image" style="background-image: url('<?php echo  coba($announcement[(3 * $i) + 0]['featured_image']); ?>'); background-size: cover; background-position: center top; height: 250px;">
+                                            <div class="d-flex container featured-image" style="background-image: url('<?php echo site_url('upload/view?file=' . $announcement[(3 * $i) + 0]['featured_image']); ?>'); background-size: cover; background-position: center top; height: 250px;">
                                                 <div class="row align-items-end">
                                                     <div class="featured-title">
                                                         <p class="fw-bolder m-0 py-2">
@@ -272,7 +272,7 @@
                                 <div class="carousel-col col-lg-4 ps-3 pe-3">
                                     <a href="<?php echo base_url('artikel/' . $announcement[(3 * $i) + 1]['slug']); ?>" class="d-block a-normal text-darken a-link" title="<?php echo $announcement[(3 * $i) + 1]['title']; ?>">
                                         <div class="inner-group d-block bg-warning-op-85 cursor-pointer">
-                                            <div class="d-flex container featured-image" style="background-image: url('<?php echo  coba($announcement[(3 * $i) + 1]['featured_image']); ?>'); background-size: cover; background-position: center top; height: 250px;">
+                                            <div class="d-flex container featured-image" style="background-image: url('<?php echo site_url('upload/view?file=' . $announcement[(3 * $i) + 1]['featured_image']); ?>'); background-size: cover; background-position: center top; height: 250px;">
                                                 <div class="row align-items-end">
                                                     <div class="featured-title">
                                                         <p class="fw-bolder m-0 py-2">
@@ -291,7 +291,7 @@
                                 <div class="carousel-col col-lg-4 pe-5">
                                     <a href="<?php echo base_url('artikel/' . $announcement[(3 * $i) + 2]['slug']); ?>" class="d-block a-normal text-darken a-link" title="<?php echo $announcement[(3 * $i) + 2]['title']; ?>">
                                         <div class="inner-group d-block bg-warning-op-85 cursor-pointer">
-                                            <div class="d-flex container featured-image" style="background-image: url('<?php echo  coba($announcement[(3 * $i) + 2]['featured_image']); ?>'); background-size: cover; background-position: center top; height: 250px;">
+                                            <div class="d-flex container featured-image" style="background-image: url('<?php echo  site_url('upload/view?file=' . $announcement[(3 * $i) + 2]['featured_image']); ?>'); background-size: cover; background-position: center top; height: 250px;">
                                                 <div class="row align-items-end">
                                                     <div class="featured-title">
                                                         <p class="fw-bolder m-0 py-2">

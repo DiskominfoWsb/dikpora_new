@@ -17,7 +17,7 @@
                         Cuplikan Gambar
                         <?php
                         if ($post->featured_image) {
-                            echo '&nbsp;<a href="' . coba(str_replace('_thumb', '', $post->featured_image)) . '" data-magnify="gallery">';
+                            echo '&nbsp;<a href="' . site_url('upload/view?file=' . str_replace('_thumb', '', $post->featured_image)) . '" data-magnify="gallery">';
                             echo '<i class="bi bi-image"></i>';
                             echo '</a>';
                         }

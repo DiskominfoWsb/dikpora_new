@@ -8,7 +8,8 @@
                         (function(d, s, id) {
                             var js, fjs = d.getElementsByTagName(s)[0];
                             if (d.getElementById(id)) return;
-                            js = d.createElement(s); js.id = id;
+                            js = d.createElement(s);
+                            js.id = id;
                             js.src = "https://connect.facebook.net/en_US/sdk.js#xfbml=1&version=v3.0";
                             fjs.parentNode.insertBefore(js, fjs);
                         }(document, 'script', 'facebook-jssdk'));
@@ -30,7 +31,8 @@
                             };
 
                             return t;
-                        }(document, "script", "twitter-wjs"));</script>
+                        }(document, "script", "twitter-wjs"));
+                    </script>
                     <a class="twitter-share-button" href="https://twitter.com/intent/tweet">Tweet</a>&nbsp;
                     <a href="whatsapp://send?text=<?php echo urlencode(current_url()); ?>" class="d-inline-block a-normal cursor-pointer text-light rounded-pill bg-success" style="height: 20px; font-size: 9pt; padding: 1px 10px 1px 7px; cursor: pointer;">
                         <i class="bi bi-whatsapp"></i> Share
@@ -51,25 +53,25 @@
                 </div>
                 <article class="px-4">
                     <div class="row">
-                        <?php foreach ($posts as $post): ?>
-                        <div class="col-lg-6 col-md-6 col-sm-12 col-xs-12 col-12 my-2 gx-3">
-                            <table style="box-shadow: 0 0 3px 0 #ccc; border-radius: .2rem;">
-                                <tr style="background: #fff;">
-                                    <td style="width: 100px; height: 100px; background-image: url('<?php echo coba($post->featured_image); ?>'); background-size: cover; border-top-left-radius: .2rem; border-bottom-left-radius: .2rem;"></td>
-                                    <td class="px-2 py-1 align-top" style="border-top-right-radius: .2rem; border-bottom-right-radius: .2rem;">
-                                        <a href="<?php echo base_url('artikel/'.$post->slug); ?>" title="<?php echo $post->title; ?>" class="d-block a-normal">
-                                            <?php echo substr($post->title,0,60); ?> ...
-                                        </a>
-                                        <small class="fst-italic">
-                                            <i class="bi bi-clock"></i> <?php echo indonesian_date($post->date_created); ?>
-                                        </small>
-                                    </td>
-                                </tr>
-                            </table>
-                        </div>
+                        <?php foreach ($posts as $post) : ?>
+                            <div class="col-lg-6 col-md-6 col-sm-12 col-xs-12 col-12 my-2 gx-3">
+                                <table style="box-shadow: 0 0 3px 0 #ccc; border-radius: .2rem;">
+                                    <tr style="background: #fff;">
+                                        <td style="width: 100px; height: 100px; background-image: url('<?php echo site_url('upload/view?file=' . $post->featured_image); ?>'); background-size: cover; border-top-left-radius: .2rem; border-bottom-left-radius: .2rem;"></td>
+                                        <td class="px-2 py-1 align-top" style="border-top-right-radius: .2rem; border-bottom-right-radius: .2rem;">
+                                            <a href="<?php echo base_url('artikel/' . $post->slug); ?>" title="<?php echo $post->title; ?>" class="d-block a-normal">
+                                                <?php echo substr($post->title, 0, 60); ?> ...
+                                            </a>
+                                            <small class="fst-italic">
+                                                <i class="bi bi-clock"></i> <?php echo indonesian_date($post->date_created); ?>
+                                            </small>
+                                        </td>
+                                    </tr>
+                                </table>
+                            </div>
                         <?php endforeach; ?>
                         <div class="col-lg-12 col-12 mt-3 gx-3">
-                            <?php echo $pager = str_replace(['<ul class="pagination"','<li>','<a'],['<ul class="pagination pagination-sm"','<li class="page-item">','<a class="page-link"'], $pager); ?>
+                            <?php echo $pager = str_replace(['<ul class="pagination"', '<li>', '<a'], ['<ul class="pagination pagination-sm"', '<li class="page-item">', '<a class="page-link"'], $pager); ?>
                         </div>
                     </div>
                 </article>

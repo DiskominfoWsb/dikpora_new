@@ -88,7 +88,7 @@
                             <td><small><em><?php echo $doc->description; ?></em></small></td>
                             <td class="text-center">
                                 <small>
-                                    <a target="_blank" href="<?= coba($doc->url); ?>" class="d-block px-1 text-center text-light bg-success a-normal rounded">
+                                    <a target="_blank" href="<?= site_url('upload/view?file=' . $doc->url); ?>" class="d-block px-1 text-center text-light bg-success a-normal rounded">
                                         <i class="bi bi-download"></i>
                                     </a>
                                 </small>
