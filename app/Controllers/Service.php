@@ -8,6 +8,10 @@ class Service extends BaseController
 {
     protected $db;
     protected $data = [];
+    
+    protected $path;
+    protected $url;
+    protected $name;
 
     public function __construct()
     {
@@ -32,7 +36,9 @@ class Service extends BaseController
         //new menu tree
         $this->data['menuNewTree1']  = getMenuNewTree('text-light', $this->db);
         //$this->data['menuNewTree2']  = getMenuNewTree('text-light', $this->db);
-
+        
+        $this->path = ROOTPATH . 'public/upload';
+        $this->url  = base_url('upload');
     }
 
     public function index()
