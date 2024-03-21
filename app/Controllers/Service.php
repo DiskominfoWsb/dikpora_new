@@ -2,6 +2,8 @@
 
 namespace App\Controllers;
 
+use Google\Cloud\Storage\StorageClient;
+
 class Service extends BaseController
 {
     protected $db;
@@ -12,7 +14,7 @@ class Service extends BaseController
         $this->db = \Config\Database::connect();
         helper([
             'date', 'my_date', 'text', 'security', 'page',
-            'option','menu','category','service', 'comment',
+            'option', 'menu', 'category', 'service', 'comment',
             'counter',
         ]);
 
@@ -36,7 +38,7 @@ class Service extends BaseController
     public function index()
     {
         //always check authentication
-        if(!session()->ID) return redirect()->to('login');
+        if (!session()->ID) return redirect()->to('login');
 
         //get filter keywords search
         $category = trim($this->request->getGet('category'));
@@ -45,9 +47,8 @@ class Service extends BaseController
         //query
         $builder = $this->db->table('service');
         $builder->selectCount('ID');
-        if($category) $builder->where('category', $category);
-        if($keywords)
-        {
+        if ($category) $builder->where('category', $category);
+        if ($keywords) {
             $builder->groupStart()
                 ->like('name', $keywords)
                 ->orLike('message', $keywords)
@@ -64,13 +65,12 @@ class Service extends BaseController
         // Call makeLinks() to make pagination links.
         $pager_links = $pager->makeLinks($page, $perPage, $total);
         $this->data['pager']        = $pager_links;
-        $this->data['pagerStart']   = ($page-1)*$perPage;
+        $this->data['pagerStart']   = ($page - 1) * $perPage;
 
         //reset query with pagination
         $builder->resetQuery();
-        if($category) $builder->where('category', $category);
-        if($keywords)
-        {
+        if ($category) $builder->where('category', $category);
+        if ($keywords) {
             $builder->groupStart()
                 ->like('name', $keywords)
                 ->orLike('message', $keywords)
@@ -102,7 +102,7 @@ class Service extends BaseController
         // Call makeLinks() to make pagination links.
         $pager_links = $pager->makeLinks($page, $perPage, $total);
         $this->data['pager']        = $pager_links;
-        $this->data['pagerStart']   = ($page-1)*$perPage;
+        $this->data['pagerStart']   = ($page - 1) * $perPage;
 
         //reset query with paged
         $builder->resetQuery();
@@ -226,8 +226,7 @@ class Service extends BaseController
     {
         //check reCAPTCHA
         $response = $this->request->getPost('g-recaptcha-response');
-        if(!$response)
-        {
+        if (!$response) {
             session()->setFlashdata('alert', [
                 'type'      => 'danger',
                 'message'   => 'Silahkan centang <strong>I\'m not a robot</strong> / <strong>Saya bukan robot</strong>',
@@ -254,11 +253,10 @@ class Service extends BaseController
         $recaptcha  = file_get_contents($url, false, $context);
         $recaptcha  = json_decode($recaptcha, true);
         //take action if not success
-        if(!$recaptcha['success'])
-        {
+        if (!$recaptcha['success']) {
             session()->setFlashdata('alert', [
                 'type'      => 'danger',
-                'message'   => 'Terdeteksi adanya malware! <em>'.$recaptcha['error-codes'].'</em>',
+                'message'   => 'Terdeteksi adanya malware! <em>' . $recaptcha['error-codes'] . '</em>',
             ]);
             return redirect()->back();
         }
@@ -283,8 +281,7 @@ class Service extends BaseController
         $status      = '0';
 
         //check required field
-        if(empty($name) OR empty($profession) OR empty($address) OR empty($_kelurahan) OR empty($_kecamatan) OR empty($email) OR empty($message))
-        {
+        if (empty($name) or empty($profession) or empty($address) or empty($_kelurahan) or empty($_kecamatan) or empty($email) or empty($message)) {
             session()->setFlashdata('alert', [
                 'type'      => 'danger',
                 'message'   => 'Isian formulir tidak lengkap!',
@@ -292,8 +289,7 @@ class Service extends BaseController
             return redirect()->back();
         }
         //check email
-        if(!filter_var($email, FILTER_VALIDATE_EMAIL))
-        {
+        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
             session()->setFlashdata('alert', [
                 'type'      => 'danger',
                 'message'   => 'Alamat email tidak valid!',
@@ -302,16 +298,13 @@ class Service extends BaseController
         }
 
         //uploading file
-        $allowedExtension = ['jpg','jpeg','png','gif','webp','pdf','doc','docx','xls','xlsx'];
+        $allowedExtension = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'pdf', 'doc', 'docx', 'xls', 'xlsx'];
         $file   = $this->request->getFile('file');
         $ext    = $file->getClientExtension();
-        if(in_array($ext, $allowedExtension))
-        {
-            if($file->isValid() && !$file->hasMoved())
-            {
-                $fileName = $file->getRandomName();
-                $file->move(ROOTPATH . 'public/upload/doc', $fileName);
-                $attachment = base_url('upload/doc/'.$fileName);
+        if (in_array($ext, $allowedExtension)) {
+            if ($file->isValid() && !$file->hasMoved()) {
+                $name   = $this->uploadToGCS($file, 'upload/img');
+                $attachment = site_url('upload/view?file=' . $name);
             }
         }
 
@@ -336,22 +329,54 @@ class Service extends BaseController
             'date_submit'   => $date_submit,
             'status'        => $status,
         ];
-        if($this->post($data))
-        {
+        if ($this->post($data)) {
             session()->setFlashdata('alert', [
                 'type'      => 'success',
                 'message'   => 'Pesan anda berhasil dikirim dan menunggu respon admin.',
             ]);
             return redirect()->back();
-        }
-        else
-        {
+        } else {
             session()->setFlashdata('alert', [
                 'type'      => 'danger',
                 'message'   => 'Gagal mengirimkan pesan! Periksa koneksi Anda.',
             ]);
             return redirect()->back();
         }
+    }
+
+    protected function uploadToGCS($file, $folder)
+    {
+        // Generate a random name for the file
+        $name = $file->getRandomName();
+
+        // Move the file to the specified path with the generated name
+        $file->move($this->path . $folder, $name);
+
+        // Initialize Google Cloud Storage client
+        $storage = new StorageClient([
+            'keyFilePath' => ROOTPATH . 'public/service-account-key.json',
+            'projectId' => 'diskominfo-wonosobo',
+        ]);
+
+        // Specify your GCS bucket
+        $bucket = $storage->bucket('dikpora');
+
+        // Specify the file path in GCS
+        $objectName = $folder . '/' . $name;
+
+        // Upload the file to GCS
+        $bucket->upload(
+            fopen($this->path . $objectName, 'r'),
+            [
+                'name' => $objectName
+            ]
+        );
+
+        // Delete the local copy
+        unlink($this->path . $objectName);
+
+        // Return the GCS file path
+        return $objectName;
     }
 
     private function updateStatus($id, $status)
@@ -366,20 +391,17 @@ class Service extends BaseController
     public function approve()
     {
         //always check authentication
-        if(!session()->ID) return redirect()->to('login');
+        if (!session()->ID) return redirect()->to('login');
 
         //get id
         $id = $this->request->getGet('id');
         //update status
-        if($this->updateStatus($id, '1'))
-        {
+        if ($this->updateStatus($id, '1')) {
             session()->setFlashdata('alert', [
                 'type'      => 'success',
                 'message'   => 'Berhasil meng-approve satu pesan.',
             ]);
-        }
-        else
-        {
+        } else {
             session()->setFlashdata('alert', [
                 'type'      => 'danger',
                 'message'   => 'Gagal meng-approve satu pesan!',
@@ -391,20 +413,17 @@ class Service extends BaseController
     public function unapprove()
     {
         //always check authentication
-        if(!session()->ID) return redirect()->to('login');
+        if (!session()->ID) return redirect()->to('login');
 
         //get id
         $id = $this->request->getGet('id');
         //update status
-        if($this->updateStatus($id, '0'))
-        {
+        if ($this->updateStatus($id, '0')) {
             session()->setFlashdata('alert', [
                 'type'      => 'success',
                 'message'   => 'Berhasil meng-unapprove satu pesan.',
             ]);
-        }
-        else
-        {
+        } else {
             session()->setFlashdata('alert', [
                 'type'      => 'danger',
                 'message'   => 'Gagal meng-unapprove satu pesan!',
@@ -416,7 +435,7 @@ class Service extends BaseController
     public function reply()
     {
         //always check authentication
-        if(!session()->ID) return redirect()->to('login');
+        if (!session()->ID) return redirect()->to('login');
 
         //get id
         $id     = $this->request->getPost('id');
@@ -426,15 +445,12 @@ class Service extends BaseController
         $builder->set('comment', $text);
         $builder->where('ID', $id);
         $builder->update();
-        if($this->db->affectedRows() > 0)
-        {
+        if ($this->db->affectedRows() > 0) {
             session()->setFlashdata('alert', [
                 'type'      => 'success',
                 'message'   => 'Berhasil memperbaharui komentar balasan.',
             ]);
-        }
-        else
-        {
+        } else {
             session()->setFlashdata('alert', [
                 'type'      => 'danger',
                 'message'   => 'Gagal memperbaharui komentar balasan!',
@@ -442,5 +458,4 @@ class Service extends BaseController
         }
         return redirect()->back();
     }
-
 }
